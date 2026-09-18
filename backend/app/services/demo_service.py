@@ -18,13 +18,11 @@ class DemoDataService:
 
     @classmethod
     def seed_demo_session(cls) -> str:
-        # Check if demo session already exists
-        existing = DatabaseManager.list_sessions()
-        for s in existing:
-            if "Fortinet" in s.title or "Cybersecurity & Cloud" in s.title:
-                return s.id
-
         session_id = "demo_cybersecurity_module_2"
+        # Check if demo session already exists
+        existing = DatabaseManager.get_session(session_id)
+        if existing:
+            return existing.id
         session_dir = get_session_dir(session_id)
         screenshots_dir = session_dir / "screenshots"
 

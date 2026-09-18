@@ -12,9 +12,11 @@ export class BrowserMediaCaptureManager {
   private startTime: number = 0;
   private recognition: any = null;
   private callbacks: CaptureCallbacks | null = null;
+  private speechDenied: boolean = false;
 
   async startCapture(callbacks: CaptureCallbacks, options?: { enableMic?: boolean }) {
     this.callbacks = callbacks;
+    this.speechDenied = false;
     this.startTime = Date.now();
 
     try {
@@ -104,12 +106,15 @@ export class BrowserMediaCaptureManager {
         };
 
         this.recognition.onerror = (e: any) => {
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+            this.speechDenied = true;
+          }
           console.warn('Speech recognition status:', e.error);
         };
 
         this.recognition.onend = () => {
-          // Restart if still active
-          if (this.mediaStream && this.mediaStream.active) {
+          // Restart if still active and permission not denied
+          if (!this.speechDenied && this.mediaStream && this.mediaStream.active) {
             try { this.recognition.start(); } catch (_) {}
           }
         };
@@ -122,6 +127,7 @@ export class BrowserMediaCaptureManager {
   }
 
   stopCapture() {
+    this.speechDenied = false;
     if (this.captureIntervalId) {
       clearInterval(this.captureIntervalId);
       this.captureIntervalId = null;
