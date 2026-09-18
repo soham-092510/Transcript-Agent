@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "LearnLens AI Companion",
+  "version": "1.0.0",
+  "description": "Show your AI what you are learning. Local-first personal learning companion that observes authorized tabs.",
+  "permissions": [
+    "activeTab",
+    "tabCapture",
+    "sidePanel",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:8000/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LearnLens AI"
+  }
+}
