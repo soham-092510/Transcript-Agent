@@ -9,9 +9,11 @@ import {
   Copy, 
   CheckCircle2,
   ExternalLink,
-  Loader2
+  Loader2,
+  Zap
 } from 'lucide-react';
 import { LearningSession } from '../types';
+import { api } from '../services/api';
 
 interface StudyArtifactsProps {
   session: LearningSession;
@@ -42,6 +44,32 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
 
   const [isGeneratingVisualPack, setIsGeneratingVisualPack] = useState(false);
   const [lastVisualPackUrl, setLastVisualPackUrl] = useState<string | null>(null);
+
+  const [isGeneratingSlideOnlyPdf, setIsGeneratingSlideOnlyPdf] = useState(false);
+  const [lastSlideOnlyPdfUrl, setLastSlideOnlyPdfUrl] = useState<string | null>(null);
+
+  const [isGeneratingSlideOnlyPptx, setIsGeneratingSlideOnlyPptx] = useState(false);
+  const [lastSlideOnlyPptxUrl, setLastSlideOnlyPptxUrl] = useState<string | null>(null);
+
+  const handleCreateSlideOnlyPdf = async () => {
+    setIsGeneratingSlideOnlyPdf(true);
+    try {
+      const res = await api.exportSlideOnlyPdf(session.id);
+      if (res && res.download_url) setLastSlideOnlyPdfUrl(res.download_url);
+    } finally {
+      setIsGeneratingSlideOnlyPdf(false);
+    }
+  };
+
+  const handleCreateSlideOnlyPptx = async () => {
+    setIsGeneratingSlideOnlyPptx(true);
+    try {
+      const res = await api.exportSlideOnlyPptx(session.id);
+      if (res && res.download_url) setLastSlideOnlyPptxUrl(res.download_url);
+    } finally {
+      setIsGeneratingSlideOnlyPptx(false);
+    }
+  };
 
   const handleCreatePPT = async () => {
     setIsGeneratingPPT(true);
@@ -246,6 +274,60 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
                     className="py-1.5 px-3 rounded-lg bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs flex items-center gap-1 border border-slate-200 shadow-sm"
                   >
                     <Download className="w-3.5 h-3.5" /> Download Pack
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-item: Pure 16:9 Video-Size Only Slide Deck */}
+            <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200 space-y-2">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5 text-amber-600 fill-current" />
+                    <h4 className="font-bold text-xs text-amber-950">16:9 Video-Size Slide Deck (PDF & PPTX)</h4>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Full-bleed slide deck capturing <b>only genuine video slide changes</b> matching exact 16:9 widescreen video resolution with zero margins or borders.
+                  </p>
+                </div>
+              </div>
+              <div className="pt-2 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleCreateSlideOnlyPdf}
+                  disabled={isGeneratingSlideOnlyPdf}
+                  className="py-1.5 px-3 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                >
+                  {isGeneratingSlideOnlyPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <FileText className="w-3.5 h-3.5 text-amber-600" />}
+                  Generate Video-Size PDF
+                </button>
+                {lastSlideOnlyPdfUrl && (
+                  <a
+                    href={lastSlideOnlyPdfUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Download 16:9 PDF
+                  </a>
+                )}
+
+                <button
+                  onClick={handleCreateSlideOnlyPptx}
+                  disabled={isGeneratingSlideOnlyPptx}
+                  className="py-1.5 px-3 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                >
+                  {isGeneratingSlideOnlyPptx ? <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" /> : <Presentation className="w-3.5 h-3.5 text-amber-600" />}
+                  Generate Video-Size PPTX
+                </button>
+                {lastSlideOnlyPptxUrl && (
+                  <a
+                    href={lastSlideOnlyPptxUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="py-1.5 px-3 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Download 16:9 PPTX
                   </a>
                 )}
               </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Loader2, Sparkles, Radio, RefreshCw, AlertCircle, GraduationCap } from 'lucide-react';
+import { Loader2, Sparkles, Radio, RefreshCw, AlertCircle, GraduationCap, Zap } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { HumanControlBar } from './components/HumanControlBar';
 import { ChatInterface } from './components/ChatInterface';
@@ -11,6 +11,7 @@ import { StudyArtifacts } from './components/StudyArtifacts';
 import { QuizPracticeModal } from './components/QuizPracticeModal';
 import { LearnerProfileView } from './components/LearnerProfileView';
 import { StartLearningModal } from './components/StartLearningModal';
+import { AutoPilotModal } from './components/AutoPilotModal';
 
 import { api } from './services/api';
 import { SessionWebSocketClient } from './services/websocket';
@@ -46,6 +47,7 @@ export function App() {
   const [isChatLoading, setIsChatLoading] = useState(false);
 
   const [startModalOpen, setStartModalOpen] = useState(false);
+  const [autoModalOpen, setAutoModalOpen] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -386,6 +388,7 @@ export function App() {
           onResume={handleResume}
           onStop={handleStop}
           onSendCommand={handleSendCommand}
+          onOpenAutoPilot={() => setAutoModalOpen(true)}
           visualEnabled={visualEnabled}
           setVisualEnabled={setVisualEnabled}
           audioEnabled={audioEnabled}
@@ -567,7 +570,20 @@ export function App() {
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+                <button
+                  onClick={() => setAutoModalOpen(true)}
+                  className="p-4 rounded-xl border border-amber-300 bg-amber-50/50 hover:bg-amber-50 hover:border-amber-500 transition-all cursor-pointer group text-left shadow-xs"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Zap className="w-4 h-4 text-amber-600 fill-current" />
+                    <span className="text-xs font-bold text-amber-950">⚡ Auto Feature (10-15m)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Ingest 11-hour / 100-video courses at 50x-100x speed, extract 16:9 slide changes, and auto-complete.
+                  </p>
+                </button>
+
                 <button
                   onClick={handleLoadDemo}
                   className="p-4 rounded-xl border border-brand-200 bg-brand-50/50 hover:bg-brand-50 hover:border-brand-400 transition-all cursor-pointer group text-left shadow-xs"
@@ -598,7 +614,7 @@ export function App() {
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
                 <span>Local SQLite Knowledge Base</span>
                 <span>12 Interactive Teacher Modes</span>
-                <span>Export PPTX & PDF</span>
+                <span>Export 16:9 Slide PPTX & PDF</span>
               </div>
             </div>
           </div>
@@ -610,6 +626,22 @@ export function App() {
         isOpen={startModalOpen}
         onClose={() => setStartModalOpen(false)}
         onConfirmStart={handleConfirmStart}
+      />
+
+      {/* ⚡ Auto Feature HyperIngest & AutoPilot Modal */}
+      <AutoPilotModal
+        isOpen={autoModalOpen}
+        onClose={() => setAutoModalOpen(false)}
+        onSessionCreatedAndLoaded={async (sId) => {
+          const updated = await api.listSessions();
+          setSessions(updated);
+          const s = updated.find(x => x.id === sId);
+          if (s) selectSession(s);
+        }}
+        onQuickTeachPrompt={(promptText) => {
+          handleSendMessage(promptText, 'simple');
+          setCurrentTab('chat');
+        }}
       />
     </div>
   );

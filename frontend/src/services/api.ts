@@ -210,5 +210,49 @@ export const api = {
       body: formData,
     });
     return res.json();
+  },
+
+  // HyperIngest: Batch Multi-Video 10-15 Min Processing
+  async hyperIngestVideos(files: File[], title?: string): Promise<{ status: string; session_id: string; total_videos: number }> {
+    const formData = new FormData();
+    files.forEach((f) => {
+      formData.append('files', f);
+    });
+    if (title) formData.append('title', title);
+    const res = await fetch(`${API_BASE}/video/hyper-ingest`, {
+      method: 'POST',
+      body: formData,
+    });
+    return res.json();
+  },
+
+  async getHyperIngestStatus(): Promise<{
+    is_running: boolean;
+    current_video_idx: number;
+    total_videos: number;
+    current_video_name: string;
+    progress_pct: number;
+    total_slides_captured: number;
+    speed_multiplier: string;
+    status_message: string;
+    session_id: string | null;
+  }> {
+    const res = await fetch(`${API_BASE}/video/hyper-ingest/status`);
+    return res.json();
+  },
+
+  // 16:9 Video-Size Only Slide Exports
+  async exportSlideOnlyPdf(sessionId: string): Promise<{ status: string; filename: string; download_url: string }> {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/export/slide-pdf`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
+
+  async exportSlideOnlyPptx(sessionId: string): Promise<{ status: string; filename: string; download_url: string }> {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/export/slide-pptx`, {
+      method: 'POST',
+    });
+    return res.json();
   }
 };

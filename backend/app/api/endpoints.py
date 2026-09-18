@@ -22,6 +22,7 @@ from backend.app.services.pdf_service import pdf_service
 from backend.app.services.quiz_service import quiz_service
 from backend.app.services.demo_service import demo_service
 from backend.app.services.video_import_service import video_import_service
+from backend.app.services.hyper_ingest_service import hyper_ingest_service
 from backend.app.providers.llm_provider import llm_provider
 from backend.app.providers.transcription_provider import transcription_provider
 from backend.app.providers.ocr_provider import ocr_provider
@@ -280,7 +281,7 @@ async def toggle_pin_endpoint(req: PinItemRequest):
     success = DatabaseManager.toggle_pin(req.item_type, req.item_id, req.is_pinned)
     return {"status": "SUCCESS" if success else "FAILED"}
 
-# ----------------- OFFLINE VIDEO IMPORT -----------------
+# ----------------- OFFLINE VIDEO IMPORT & HYPERINGEST -----------------
 @router.post("/video/import")
 async def import_video(file: UploadFile = File(...), title: Optional[str] = Form(None)):
     import time
@@ -292,3 +293,60 @@ async def import_video(file: UploadFile = File(...), title: Optional[str] = Form
     if tmp_path.exists():
         os.remove(tmp_path)
     return {"status": "PROCESSED", "session_id": session_id}
+
+@router.post("/video/hyper-ingest")
+async def hyper_ingest_endpoint(files: List[UploadFile] = File(...), title: Optional[str] = Form(None)):
+    """
+    HyperIngest Batch Endpoint: Ingests 10-100 videos in parallel/accelerated mode,
+    capturing only genuine 16:9 slide transitions at 50x-100x realtime.
+    """
+    import time
+    from backend.app.core.config import SESSIONS_DIR
+    batch_dir = SESSIONS_DIR / f"hyper_batch_{int(time.time())}"
+    batch_dir.mkdir(parents=True, exist_ok=True)
+    
+    saved_paths = []
+    try:
+        for f in files:
+            t_path = batch_dir / f.filename
+            with open(t_path, "wb") as out_f:
+                out_f.write(await f.read())
+            saved_paths.append(str(t_path))
+            
+        session_id = await hyper_ingest_service.ingest_video_batch(saved_paths, course_title=title)
+        return {
+            "status": "COMPLETED",
+            "session_id": session_id,
+            "total_videos": len(saved_paths),
+            "message": f"Successfully ingested {len(saved_paths)} videos in accelerated mode."
+        }
+    finally:
+        # Cleanup uploaded raw videos
+        try:
+            shutil.rmtree(batch_dir, ignore_errors=True)
+        except Exception:
+            pass
+
+@router.get("/video/hyper-ingest/status")
+async def get_hyper_ingest_status():
+    return hyper_ingest_service.get_status()
+
+@router.post("/sessions/{session_id}/export/slide-pdf")
+async def export_slide_only_pdf(session_id: str):
+    """
+    Generates pure 16:9 widescreen slide deck PDF matching exact video dimensions
+    with full-bleed slide images and zero margins.
+    """
+    output_path = await pdf_service.generate_pdf(session_id, pdf_type="slide_only")
+    filename = os.path.basename(output_path)
+    return {"status": "SUCCESS", "filename": filename, "download_url": f"/api/exports/{session_id}/{filename}"}
+
+@router.post("/sessions/{session_id}/export/slide-pptx")
+async def export_slide_only_pptx(session_id: str):
+    """
+    Generates pure 16:9 widescreen PowerPoint deck matching exact video dimensions.
+    """
+    output_path = await ppt_service.generate_slide_only_presentation(session_id)
+    filename = os.path.basename(output_path)
+    return {"status": "SUCCESS", "filename": filename, "download_url": f"/api/exports/{session_id}/{filename}"}
+

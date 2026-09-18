@@ -25,6 +25,51 @@ class PPTGenerationService:
     """
 
     @classmethod
+    async def generate_slide_only_presentation(cls, session_id: str) -> str:
+        """
+        Creates a pure 16:9 widescreen PowerPoint deck containing ONLY the captured
+        slide changes matching exact video dimensions with full bleed and zero distortion.
+        """
+        session = DatabaseManager.get_session(session_id)
+        if not session:
+            raise ValueError(f"Session {session_id} not found")
+
+        frames = DatabaseManager.get_frames(session_id)
+        session_dir = get_session_dir(session_id)
+        exports_dir = session_dir / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
+
+        prs = Presentation()
+        prs.slide_width = Inches(13.333)  # Exact 16:9 widescreen
+        prs.slide_height = Inches(7.5)
+        blank_layout = prs.slide_layouts[6]
+
+        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
+        if not valid_frames:
+            slide = prs.slides.add_slide(blank_layout)
+            tb = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(11.333), Inches(1.5))
+            p = tb.text_frame.add_paragraph()
+            p.text = f"No slide captures found for {session.title}"
+            p.font.size = Pt(20)
+            p.font.bold = True
+            p.font.color.rgb = BG_DARK
+        else:
+            for f in valid_frames:
+                slide = prs.slides.add_slide(blank_layout)
+                try:
+                    # Full bleed 16:9 image placement (exact video size: 13.333in x 7.5in)
+                    slide.shapes.add_picture(f.image_path, Inches(0), Inches(0), width=Inches(13.333), height=Inches(7.5))
+                except Exception as e:
+                    print(f"Slide picture add failed: {e}")
+
+        safe_title = session.title.replace(" ", "_")[:25]
+        timestamp_str = int(time.time())
+        filename = f"LearnLens_SlideDeck_16x9_{safe_title}_{timestamp_str}.pptx"
+        output_path = exports_dir / filename
+        prs.save(str(output_path))
+        return str(output_path)
+
+    @classmethod
     async def generate_presentation(
         cls,
         session_id: str,

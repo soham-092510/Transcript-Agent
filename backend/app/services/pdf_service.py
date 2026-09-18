@@ -9,6 +9,7 @@ from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage, PageBreak, KeepTogether, HRFlowable
 )
 from reportlab.lib.units import inch
+from reportlab.pdfgen import canvas
 
 from backend.app.db.database import DatabaseManager, get_session_dir
 
@@ -43,7 +44,11 @@ class PDFGenerationService:
         safe_title = session.title.replace(" ", "_")[:25]
         timestamp_str = int(time.time())
 
-        if pdf_type == "visual_pack":
+        if pdf_type in ("slide_only", "video_size"):
+            filename = f"LearnLens_SlideOnly_16x9_{safe_title}_{timestamp_str}.pdf"
+            output_path = exports_dir / filename
+            cls._build_slide_only_pdf(str(output_path), session, frames)
+        elif pdf_type == "visual_pack":
             filename = f"LearnLens_VisualPack_{safe_title}_{timestamp_str}.pdf"
             output_path = exports_dir / filename
             cls._build_visual_pack_pdf(str(output_path), session, frames)
@@ -53,6 +58,27 @@ class PDFGenerationService:
             cls._build_teaching_report_pdf(str(output_path), session, concepts, frames, segments)
 
         return str(output_path)
+
+    @classmethod
+    def _build_slide_only_pdf(cls, file_path: str, session, frames):
+        """Builds pure 16:9 widescreen slide deck PDF matching exact video dimensions."""
+        page_w = 10 * inch       # 720 points
+        page_h = 5.625 * inch    # 405 points (exact 16:9)
+        c = canvas.Canvas(file_path, pagesize=(page_w, page_h))
+        
+        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
+        if not valid_frames:
+            c.setFont("Helvetica-Bold", 16)
+            c.drawString(72, page_h / 2, f"No slide captures available for {session.title}")
+            c.showPage()
+        else:
+            for f in valid_frames:
+                try:
+                    c.drawImage(f.image_path, 0, 0, width=page_w, height=page_h)
+                    c.showPage()
+                except Exception as e:
+                    print(f"Canvas slide draw error: {e}")
+        c.save()
 
     @classmethod
     def _build_visual_pack_pdf(cls, file_path: str, session, frames):

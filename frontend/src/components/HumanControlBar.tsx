@@ -7,6 +7,7 @@ import {
   Eye, 
   Mic, 
   Sparkles,
+  Zap,
 } from 'lucide-react';
 import { LearningSession } from '../types';
 
@@ -16,6 +17,7 @@ interface HumanControlBarProps {
   onResume: () => void;
   onStop: () => void;
   onSendCommand: (cmd: string) => void;
+  onOpenAutoPilot: () => void;
   visualEnabled: boolean;
   setVisualEnabled: (val: boolean) => void;
   audioEnabled: boolean;
@@ -28,6 +30,7 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
   onResume,
   onStop,
   onSendCommand,
+  onOpenAutoPilot,
   visualEnabled,
   setVisualEnabled,
   audioEnabled,
@@ -39,7 +42,14 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
   if (!activeSession) {
     return (
       <header className="h-14 border-b border-slate-200 bg-white px-6 flex items-center justify-between text-xs text-slate-500 shadow-sm">
-        <span>No active learning session selected. Click "Start Learning" or load the "Demo" to begin.</span>
+        <span>No active learning session selected. Click "Start Learning" or launch the Auto Feature.</span>
+        <button
+          onClick={onOpenAutoPilot}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-extrabold shadow-md shadow-amber-500/20 transition-all active:scale-95 cursor-pointer ml-auto"
+        >
+          <Zap className="w-3.5 h-3.5 fill-current" />
+          <span>⚡ AUTO FEATURE</span>
+        </button>
       </header>
     );
   }
@@ -152,6 +162,16 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
         >
           <Terminal className="w-3.5 h-3.5" />
           COMMAND
+        </button>
+
+        {/* ⚡ AUTO FEATURE (Upper Rightmost Corner) */}
+        <button
+          onClick={onOpenAutoPilot}
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-extrabold shadow-md shadow-amber-500/25 transition-all active:scale-95 cursor-pointer ml-1"
+          title="Auto Feature: Ingest 11-hour / 100-video courses in 10-15 minutes, hands-free auto-next, and video-size slide PDF/PPTX"
+        >
+          <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
+          <span>⚡ AUTO FEATURE</span>
         </button>
       </div>
 

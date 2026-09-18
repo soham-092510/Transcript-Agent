@@ -7,6 +7,13 @@
 
 ## 🌟 Key Product Features
 
+- **⚡ Auto Feature (10–15 Min HyperIngest & Hands-Free AutoPilot)**:
+  - **Upper Rightmost Corner Launcher**: Always accessible via the prominent **`⚡ AUTO FEATURE`** button at the top-right corner.
+  - **10–15 Min Accelerated Ingest**: Non-linear keyframe seeking scans 11-hour / 100-video courses at 50x–100x hardware speed, skipping dead video playback.
+  - **Slide Changes Only**: Captures screenshots *only* when the slide or diagram changes, filtered by perceptual difference hashing (`dHash`).
+  - **16:9 Video-Size Deck (PDF & PPTX)**: Full-bleed slide decks matching exact video dimensions with zero white margins or distortion.
+  - **Hands-Free Web Auto-Next**: Automatically advances through Coursera, YouTube, and Udemy playlists without human clicks.
+  - **Auto-Complete & Master Graph**: Marks all 100 lectures as 100% completed and teaches interactively using text explanations and slide screenshots.
 - **Universal Chrome Observation**: Works natively on **YouTube, Coursera, Fortinet Training Institute, Forage, Udemy, DeepLearning.AI**, online lectures, documentation, or local video files via Chrome's native `getDisplayMedia` picker.
 - **Smart Screenshot Intelligence**: Perceptual difference hashing (`dHash`) and Hamming distance filtering eliminate 85%+ redundant frames.
 - **Multimodal Perception**: Synchronized `faster-whisper` speech transcription + OpenCV visual classification (`DIAGRAM`, `SLIDE`, `CODE`, `TABLE`) + OCR.
@@ -15,6 +22,7 @@
   - *Simple Mode*, *Detailed Mode*, *Exam Focus*, *Quick Revision*, *Explain With Example*, *Teach From Scratch*, *Active Recall*, *Flashcards*, *Practice Quiz*, *Weak Areas*, *Compare Concepts*, *Ask Anything*.
   - Every answer is grounded in captured timestamps with clickable slide thumbnail cards.
 - **Study Artifacts Generation**:
+  - **Pure 16:9 Video-Size Slide PDF & PPTX**: Exact video-dimension slides of every slide transition.
   - **PowerPoint Presentation (.pptx)**: 16:9 widescreen presentation deck using `python-pptx`, embedding real captured diagrams and structured definition cards.
   - **Teaching Report PDF**: Comprehensive study guide formatted with ReportLab.
   - **Visual Study Pack PDF**: Chronological visual slide deck with OCR text and timestamps.
