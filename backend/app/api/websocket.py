@@ -54,6 +54,7 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
             # 1. Real-time Transcript Chunk from Client
             if event_type == "transcript_chunk":
                 text = payload.get("text", "").strip()
+                speaker = payload.get("speaker", "Instructor").strip() or "Instructor"
                 timestamp_sec = float(payload.get("timestamp_sec", 0.0))
                 formatted_ts = screenshot_service.format_timestamp(timestamp_sec)
                 
@@ -62,6 +63,7 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                     timestamp_start=timestamp_sec,
                     timestamp_end=timestamp_sec + 5.0,
                     timestamp_formatted=formatted_ts,
+                    speaker=speaker,
                     text=text,
                     confidence=0.98
                 )
@@ -81,10 +83,51 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                     "new_concepts": [c.dict() for c in concepts]
                 })
 
-            # 2. Real-time Video Frame Capture from Client Canvas/Screen
+            # 2. Real-time Audio Stream Chunk from Meeting/Tab/Mic for Whisper STT
+            elif event_type == "audio_chunk":
+                b64_audio = payload.get("audio_base64", "")
+                speaker = payload.get("speaker", "Instructor").strip() or "Instructor"
+                timestamp_sec = float(payload.get("timestamp_sec", 0.0))
+                
+                if "," in b64_audio:
+                    b64_audio = b64_audio.split(",")[1]
+                audio_bytes = base64.b64decode(b64_audio)
+
+                from backend.app.providers.transcription_provider import transcription_provider
+                segments = await transcription_provider.transcribe_audio_bytes(audio_bytes, speaker_hint=speaker)
+                for s in segments:
+                    seg_text = s.get("text", "").strip()
+                    if not seg_text:
+                        continue
+                    formatted_ts = screenshot_service.format_timestamp(timestamp_sec)
+                    segment = TranscriptSegment(
+                        session_id=session_id,
+                        timestamp_start=timestamp_sec,
+                        timestamp_end=timestamp_sec + 5.0,
+                        timestamp_formatted=formatted_ts,
+                        speaker=speaker,
+                        text=seg_text,
+                        confidence=s.get("confidence", 0.95)
+                    )
+                    DatabaseManager.add_transcript_segment(segment)
+
+                    concepts = await knowledge_service.extract_knowledge_from_chunk(
+                        session_id=session_id,
+                        transcript_text=seg_text,
+                        timestamp_formatted=formatted_ts
+                    )
+
+                    await manager.broadcast(session_id, {
+                        "event": "transcript_received",
+                        "segment": segment.dict(),
+                        "new_concepts": [c.dict() for c in concepts]
+                    })
+
+            # 3. Real-time Video Frame Capture from Client Canvas/Screen
             elif event_type == "frame_capture":
                 b64_img = payload.get("image_base64", "")
                 timestamp_sec = float(payload.get("timestamp_sec", 0.0))
+                force = bool(payload.get("force", False))
                 
                 if "," in b64_img:
                     b64_img = b64_img.split(",")[1]
@@ -93,7 +136,8 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                 frame_capture = await screenshot_service.process_frame_data(
                     session_id=session_id,
                     image_bytes=img_bytes,
-                    timestamp_sec=timestamp_sec
+                    timestamp_sec=timestamp_sec,
+                    force_capture=force
                 )
 
                 if frame_capture:
@@ -103,7 +147,7 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                         "frame": frame_capture.dict()
                     })
 
-            # 3. Heartbeat ping
+            # 4. Heartbeat ping
             elif event_type == "ping":
                 await websocket.send_json({"event": "pong"})
 

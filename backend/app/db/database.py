@@ -343,6 +343,24 @@ class DatabaseManager:
         ]
 
     @staticmethod
+    def get_latest_frame(session_id: str) -> Optional[FrameCapture]:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM frames WHERE session_id = ? ORDER BY rowid DESC LIMIT 1", (session_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return FrameCapture(
+            id=row["id"], session_id=row["session_id"], timestamp_sec=row["timestamp_sec"],
+            timestamp_formatted=row["timestamp_formatted"], image_path=row["image_path"],
+            thumbnail_path=row["thumbnail_path"], p_hash=row["p_hash"], ocr_text=row["ocr_text"],
+            visual_description=row["visual_description"], category=VisualCategory(row["category"]),
+            importance_score=row["importance_score"], concepts=json.loads(row["concepts"] or "[]"),
+            is_pinned=bool(row["is_pinned"])
+        )
+
+    @staticmethod
     def add_concept(concept: Concept):
         conn = get_db_connection()
         cursor = conn.cursor()

@@ -55,34 +55,53 @@ class ScreenshotIntelligenceService:
             return 999
         return sum(c1 != c2 for c1, c2 in zip(hash1, hash2))
 
+    _last_seen: Dict[str, Dict[str, Any]] = {}
+
     @classmethod
     async def process_frame_data(
         cls,
         session_id: str,
         image_bytes: bytes,
-        timestamp_sec: float
+        timestamp_sec: float,
+        force_capture: bool = False
     ) -> Optional[FrameCapture]:
         """
         Evaluate frame:
         1. Compute dHash.
-        2. Check similarity against recent frames.
-        3. If significant change detected, run OCR & VLM classification.
+        2. Check similarity against the latest frame in this session.
+        3. If significant change detected (or force_capture is True), run OCR & VLM classification.
         4. Save image and thumbnail.
-        5. Persist to DB.
+        5. Persist to DB and update session state.
         """
         try:
             pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
             cur_hash = cls.calculate_dhash(pil_image)
             
-            # Check against existing frames in this session
-            existing_frames = DatabaseManager.get_frames(session_id)
-            if existing_frames:
-                last_frame = existing_frames[-1]
-                if last_frame.p_hash:
-                    dist = cls.hamming_distance(cur_hash, last_frame.p_hash)
-                    # If distance is too small, it's a duplicate or stationary slide
-                    if dist < settings.PERCEPTUAL_HASH_DIFF_THRESHOLD:
-                        return None
+            # Check against latest frame for this session
+            last_saved = cls._last_seen.get(session_id)
+            if not last_saved:
+                last_db_frame = DatabaseManager.get_latest_frame(session_id)
+                if last_db_frame and last_db_frame.p_hash:
+                    last_saved = {
+                        "p_hash": last_db_frame.p_hash,
+                        "timestamp_sec": last_db_frame.timestamp_sec,
+                        "saved_at": time.time() - 10,
+                        "ocr_text": last_db_frame.ocr_text or ""
+                    }
+                    cls._last_seen[session_id] = last_saved
+
+            if not force_capture and last_saved and last_saved.get("p_hash"):
+                last_hash = last_saved["p_hash"]
+                dist = cls.hamming_distance(cur_hash, last_hash)
+                
+                # Check cooldown: minimum 1.5 seconds between slides unless force_capture
+                time_since_last = time.time() - last_saved.get("saved_at", 0)
+                if time_since_last < 1.5:
+                    return None
+                
+                # If distance is too small, it's a duplicate or stationary slide
+                if dist < settings.PERCEPTUAL_HASH_DIFF_THRESHOLD:
+                    return None
 
             # Generate file paths
             session_dir = get_session_dir(session_id)
@@ -134,6 +153,15 @@ class ScreenshotIntelligenceService:
             )
             
             DatabaseManager.add_frame(frame_capture)
+
+            # Update in-memory tracker
+            cls._last_seen[session_id] = {
+                "p_hash": cur_hash,
+                "timestamp_sec": timestamp_sec,
+                "saved_at": time.time(),
+                "ocr_text": ocr_text
+            }
+
             return frame_capture
             
         except Exception as e:

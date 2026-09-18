@@ -55,22 +55,35 @@ export class SessionWebSocketClient {
     };
   }
 
-  sendTranscriptChunk(text: string, timestampSec: number) {
+  sendTranscriptChunk(text: string, timestampSec: number, speaker: string = 'Instructor') {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({
         type: 'transcript_chunk',
         text,
+        speaker,
         timestamp_sec: timestampSec
       }));
     }
   }
 
-  sendFrameCapture(imageBase64: string, timestampSec: number) {
+  sendAudioChunk(audioBase64: string, timestampSec: number, speaker: string = 'Instructor') {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({
+        type: 'audio_chunk',
+        audio_base64: audioBase64,
+        speaker,
+        timestamp_sec: timestampSec
+      }));
+    }
+  }
+
+  sendFrameCapture(imageBase64: string, timestampSec: number, force: boolean = false) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify({
         type: 'frame_capture',
         image_base64: imageBase64,
-        timestamp_sec: timestampSec
+        timestamp_sec: timestampSec,
+        force
       }));
     }
   }

@@ -42,6 +42,24 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
                 return results
             except Exception as e:
                 logger.error(f"Whisper transcription failed: {e}")
-        return []
+    async def transcribe_audio_bytes(self, audio_bytes: bytes, speaker_hint: str = "Instructor") -> List[Dict[str, Any]]:
+        import tempfile
+        import time
+        suffix = ".webm" if audio_bytes[:4] == b'\x1a\x45\xdf\xa3' else ".wav"
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+            tmp.write(audio_bytes)
+            tmp_path = tmp.name
+
+        try:
+            segments = await self.transcribe_audio_file(tmp_path)
+            for s in segments:
+                s["speaker"] = speaker_hint
+            return segments
+        finally:
+            try:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except Exception:
+                pass
 
 transcription_provider = LocalWhisperTranscriptionProvider()

@@ -1,18 +1,65 @@
 export interface CaptureCallbacks {
-  onFrameCaptured: (base64Image: string, timestampSec: number) => void;
-  onTranscriptChunk?: (text: string, timestampSec: number) => void;
+  onFrameCaptured: (base64Image: string, timestampSec: number, force?: boolean) => void;
+  onTranscriptChunk?: (text: string, timestampSec: number, speaker?: string) => void;
+  onAudioChunk?: (base64Audio: string, timestampSec: number, speaker?: string) => void;
   onStopped: () => void;
+}
+
+class BackgroundWorkerTimer {
+  private worker: Worker | null = null;
+
+  start(intervalMs: number, onTick: () => void) {
+    this.stop();
+    try {
+      const code = `
+        let timer = null;
+        self.onmessage = function(e) {
+          if (e.data === 'start') {
+            timer = setInterval(function() {
+              self.postMessage('tick');
+            }, ${intervalMs});
+          } else if (e.data === 'stop') {
+            if (timer) clearInterval(timer);
+          }
+        };
+      `;
+      const blob = new Blob([code], { type: 'application/javascript' });
+      this.worker = new Worker(URL.createObjectURL(blob));
+      this.worker.onmessage = (e) => {
+        if (e.data === 'tick') {
+          onTick();
+        }
+      };
+      this.worker.postMessage('start');
+    } catch (e) {
+      console.warn('Web Worker timer fallback to setInterval:', e);
+    }
+  }
+
+  stop() {
+    if (this.worker) {
+      try {
+        this.worker.postMessage('stop');
+        this.worker.terminate();
+      } catch (_) {}
+      this.worker = null;
+    }
+  }
 }
 
 export class BrowserMediaCaptureManager {
   private mediaStream: MediaStream | null = null;
+  private micStream: MediaStream | null = null;
   private videoElement: HTMLVideoElement | null = null;
   private canvasElement: HTMLCanvasElement | null = null;
-  private captureIntervalId: any = null;
+  private workerTimer: BackgroundWorkerTimer = new BackgroundWorkerTimer();
+  private fallbackIntervalId: any = null;
   private startTime: number = 0;
   private recognition: any = null;
   private callbacks: CaptureCallbacks | null = null;
   private speechDenied: boolean = false;
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioContext: AudioContext | null = null;
 
   async startCapture(callbacks: CaptureCallbacks, options?: { enableMic?: boolean }) {
     this.callbacks = callbacks;
@@ -20,7 +67,14 @@ export class BrowserMediaCaptureManager {
     this.startTime = Date.now();
 
     try {
-      // 1. Trigger Chrome's native picker (Chrome Tab / Window / Entire Screen)
+      // 1. Proactively request mic permission so speech recognition & mic mixing work reliably
+      try {
+        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      } catch (micErr) {
+        console.info('Microphone direct access not granted, continuing with tab audio:', micErr);
+      }
+
+      // 2. Trigger Chrome's native picker (Chrome Tab / Window / Entire Screen)
       // Request both video and audio
       const displayMediaOptions: DisplayMediaStreamOptions = {
         video: {
@@ -41,7 +95,7 @@ export class BrowserMediaCaptureManager {
         };
       }
 
-      // 2. Setup video and canvas for periodic frame extraction
+      // 3. Setup video and canvas for periodic frame extraction
       this.videoElement = document.createElement('video');
       this.videoElement.srcObject = this.mediaStream;
       this.videoElement.muted = true;
@@ -51,15 +105,24 @@ export class BrowserMediaCaptureManager {
       this.canvasElement.width = 1280;
       this.canvasElement.height = 720;
 
-      // 3. Start frame sampling (every 3 seconds)
-      this.captureIntervalId = setInterval(() => {
-        this.sampleCurrentFrame();
-      }, 3000);
+      // 4. Start background-safe worker frame sampling (every 2.5 seconds)
+      // Web Worker timer does NOT get throttled by Chrome when tab is minimized or user switches apps!
+      this.workerTimer.start(2500, () => {
+        this.sampleCurrentFrame(false);
+      });
+
+      // Fallback standard interval in case Web Worker is disabled in environment
+      this.fallbackIntervalId = setInterval(() => {
+        this.sampleCurrentFrame(false);
+      }, 2500);
 
       // Initial frame immediately
-      setTimeout(() => this.sampleCurrentFrame(), 800);
+      setTimeout(() => this.sampleCurrentFrame(true), 600);
 
-      // 4. Setup Speech Recognition if available for real-time speech transcription
+      // 5. Setup Audio Streaming (Meeting tab audio + mic)
+      this.setupAudioRecording();
+
+      // 6. Setup Speech Recognition if available for real-time speech transcription
       this.setupSpeechRecognition();
 
       return true;
@@ -70,7 +133,7 @@ export class BrowserMediaCaptureManager {
     }
   }
 
-  private sampleCurrentFrame() {
+  sampleCurrentFrame(force: boolean = false) {
     if (!this.videoElement || !this.canvasElement || !this.mediaStream || !this.callbacks) {
       return;
     }
@@ -80,7 +143,56 @@ export class BrowserMediaCaptureManager {
     ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
     const base64Data = this.canvasElement.toDataURL('image/jpeg', 0.82);
     const timestampSec = (Date.now() - this.startTime) / 1000.0;
-    this.callbacks.onFrameCaptured(base64Data, timestampSec);
+    this.callbacks.onFrameCaptured(base64Data, timestampSec, force);
+  }
+
+  forceCapture() {
+    this.sampleCurrentFrame(true);
+  }
+
+  private setupAudioRecording() {
+    try {
+      // Gather audio tracks from tab and mic
+      const audioTracks: MediaStreamTrack[] = [];
+      if (this.mediaStream) {
+        this.mediaStream.getAudioTracks().forEach(t => audioTracks.push(t));
+      }
+      if (this.micStream) {
+        this.micStream.getAudioTracks().forEach(t => audioTracks.push(t));
+      }
+
+      if (audioTracks.length === 0) {
+        console.info('No audio tracks attached to display media stream.');
+        return;
+      }
+
+      const combinedStream = new MediaStream(audioTracks);
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+
+      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
+      this.mediaRecorder = new MediaRecorder(combinedStream, recorderOptions);
+
+      this.mediaRecorder.ondataavailable = async (e: BlobEvent) => {
+        if (e.data && e.data.size > 2000 && this.callbacks?.onAudioChunk) {
+          const timestampSec = (Date.now() - this.startTime) / 1000.0;
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const b64 = reader.result as string;
+            if (b64 && this.callbacks?.onAudioChunk) {
+              this.callbacks.onAudioChunk(b64, timestampSec, 'Speaker');
+            }
+          };
+          reader.readAsDataURL(e.data);
+        }
+      };
+
+      // Emit audio chunk every 5 seconds for Whisper transcription
+      this.mediaRecorder.start(5000);
+    } catch (e) {
+      console.warn('Audio streaming setup note:', e);
+    }
   }
 
   private setupSpeechRecognition() {
@@ -101,7 +213,7 @@ export class BrowserMediaCaptureManager {
           }
           if (finalTranscript.trim() && this.callbacks?.onTranscriptChunk) {
             const timestampSec = (Date.now() - this.startTime) / 1000.0;
-            this.callbacks.onTranscriptChunk(finalTranscript.trim(), timestampSec);
+            this.callbacks.onTranscriptChunk(finalTranscript.trim(), timestampSec, 'Speaker');
           }
         };
 
@@ -128,9 +240,14 @@ export class BrowserMediaCaptureManager {
 
   stopCapture() {
     this.speechDenied = false;
-    if (this.captureIntervalId) {
-      clearInterval(this.captureIntervalId);
-      this.captureIntervalId = null;
+    this.workerTimer.stop();
+    if (this.fallbackIntervalId) {
+      clearInterval(this.fallbackIntervalId);
+      this.fallbackIntervalId = null;
+    }
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try { this.mediaRecorder.stop(); } catch (_) {}
+      this.mediaRecorder = null;
     }
     if (this.recognition) {
       try { this.recognition.stop(); } catch (_) {}
@@ -139,6 +256,10 @@ export class BrowserMediaCaptureManager {
     if (this.mediaStream) {
       this.mediaStream.getTracks().forEach(t => t.stop());
       this.mediaStream = null;
+    }
+    if (this.micStream) {
+      this.micStream.getTracks().forEach(t => t.stop());
+      this.micStream = null;
     }
     if (this.videoElement) {
       this.videoElement.pause();

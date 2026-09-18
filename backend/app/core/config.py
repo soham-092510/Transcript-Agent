@@ -27,8 +27,8 @@ class Settings:
     
     # Processing limits & parameters
     FRAME_SAMPLE_INTERVAL_SEC: float = 2.0
-    PERCEPTUAL_HASH_DIFF_THRESHOLD: int = 8
-    MIN_OCR_CHARS_SIGNIFICANT: int = 25
+    PERCEPTUAL_HASH_DIFF_THRESHOLD: int = 4
+    MIN_OCR_CHARS_SIGNIFICANT: int = 15
     MAX_SESSION_FRAMES_IN_PPT: int = 15
     
     # Database

@@ -149,6 +149,29 @@ export function App() {
   };
 
   // Start Learning via Native Screen/Tab Sharing
+  const startMediaObservation = async () => {
+    return await mediaCaptureManager.startCapture({
+      onFrameCaptured: (b64, sec, force) => {
+        if (visualEnabled && wsClientRef.current) {
+          wsClientRef.current.sendFrameCapture(b64, sec, force);
+        }
+      },
+      onTranscriptChunk: (text, sec, speaker) => {
+        if (audioEnabled && wsClientRef.current) {
+          wsClientRef.current.sendTranscriptChunk(text, sec, speaker || 'Speaker');
+        }
+      },
+      onAudioChunk: (b64Audio, sec, speaker) => {
+        if (audioEnabled && wsClientRef.current) {
+          wsClientRef.current.sendAudioChunk(b64Audio, sec, speaker || 'Speaker');
+        }
+      },
+      onStopped: () => {
+        setIsCapturing(false);
+      }
+    });
+  };
+
   const handleConfirmStart = async (title: string, platform: string) => {
     setStartModalOpen(false);
     try {
@@ -156,29 +179,41 @@ export function App() {
       setSessions(prev => [newSession, ...prev]);
       await selectSession(newSession);
 
-      // Trigger native browser displayMedia picker
-      const ok = await mediaCaptureManager.startCapture({
-        onFrameCaptured: (b64, sec) => {
-          if (visualEnabled && wsClientRef.current) {
-            wsClientRef.current.sendFrameCapture(b64, sec);
-          }
-        },
-        onTranscriptChunk: (text, sec) => {
-          if (audioEnabled && wsClientRef.current) {
-            wsClientRef.current.sendTranscriptChunk(text, sec);
-          }
-        },
-        onStopped: () => {
-          setIsCapturing(false);
-        }
-      });
-
+      const ok = await startMediaObservation();
       if (ok) {
         setIsCapturing(true);
         setCurrentTab('live');
       }
     } catch (e) {
       console.error('Could not start learning session:', e);
+    }
+  };
+
+  const handleStartObservationForActive = async () => {
+    if (!activeSession) {
+      setStartModalOpen(true);
+      return;
+    }
+    const ok = await startMediaObservation();
+    if (ok) {
+      setIsCapturing(true);
+      setCurrentTab('live');
+    }
+  };
+
+  const handleForceCapture = () => {
+    mediaCaptureManager.forceCapture();
+  };
+
+  const handleInstantSlidePdf = async () => {
+    if (!activeSession) return;
+    try {
+      const res = await api.exportSlideOnlyPdf(activeSession.id);
+      if (res && res.download_url) {
+        window.open(res.download_url, '_blank');
+      }
+    } catch (err) {
+      console.error('Instant slide PDF export failed:', err);
     }
   };
 
@@ -440,8 +475,10 @@ export function App() {
               <LiveCaptureStudio
                 session={activeSession}
                 isCapturing={isCapturing}
-                onStartCapture={() => setStartModalOpen(true)}
+                onStartCapture={handleStartObservationForActive}
                 onStopCapture={handleStopCapture}
+                onForceCapture={handleForceCapture}
+                onInstantSlidePdf={handleInstantSlidePdf}
                 recentFrames={frames}
                 recentSegments={segments}
                 onOpenSlidePreview={(fId) => {

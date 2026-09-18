@@ -111,13 +111,15 @@ async def get_frames(session_id: str):
 async def upload_frame(
     session_id: str,
     timestamp_sec: float = Form(...),
+    force: bool = Form(False),
     file: UploadFile = File(...)
 ):
     content = await file.read()
     frame_capture = await screenshot_service.process_frame_data(
         session_id=session_id,
         image_bytes=content,
-        timestamp_sec=timestamp_sec
+        timestamp_sec=timestamp_sec,
+        force_capture=force
     )
     if not frame_capture:
         return {"status": "SKIPPED_DUPLICATE"}
@@ -132,6 +134,40 @@ async def upload_frame(
         )
 
     return {"status": "CAPTURED", "frame": frame_capture}
+
+@router.post("/sessions/{session_id}/audio-chunk")
+async def upload_audio_chunk(
+    session_id: str,
+    timestamp_sec: float = Form(...),
+    speaker: str = Form("Instructor"),
+    file: UploadFile = File(...)
+):
+    audio_bytes = await file.read()
+    from backend.app.providers.transcription_provider import transcription_provider
+    segments = await transcription_provider.transcribe_audio_bytes(audio_bytes, speaker_hint=speaker)
+    saved_segments = []
+    for s in segments:
+        seg_text = s.get("text", "").strip()
+        if not seg_text:
+            continue
+        formatted_ts = screenshot_service.format_timestamp(timestamp_sec)
+        segment = TranscriptSegment(
+            session_id=session_id,
+            timestamp_start=timestamp_sec,
+            timestamp_end=timestamp_sec + 5.0,
+            timestamp_formatted=formatted_ts,
+            speaker=speaker,
+            text=seg_text,
+            confidence=s.get("confidence", 0.95)
+        )
+        DatabaseManager.add_transcript_segment(segment)
+        await knowledge_service.extract_knowledge_from_chunk(
+            session_id=session_id,
+            transcript_text=seg_text,
+            timestamp_formatted=formatted_ts
+        )
+        saved_segments.append(segment)
+    return {"status": "TRANSCRIBED", "count": len(saved_segments), "segments": saved_segments}
 
 @router.get("/frames/{frame_id}/image")
 async def get_frame_image(frame_id: str):

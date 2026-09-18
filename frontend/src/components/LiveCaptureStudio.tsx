@@ -10,7 +10,11 @@ import {
   FileText,
   Clock,
   CheckCircle2,
-  ExternalLink
+  ExternalLink,
+  Camera,
+  Download,
+  ShieldCheck,
+  User
 } from 'lucide-react';
 import { FrameCapture, TranscriptSegment, LearningSession } from '../types';
 
@@ -19,6 +23,8 @@ interface LiveCaptureStudioProps {
   isCapturing: boolean;
   onStartCapture: () => void;
   onStopCapture: () => void;
+  onForceCapture?: () => void;
+  onInstantSlidePdf?: () => void;
   recentFrames: FrameCapture[];
   recentSegments: TranscriptSegment[];
   onOpenSlidePreview: (frameId: string) => void;
@@ -29,6 +35,8 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
   isCapturing,
   onStartCapture,
   onStopCapture,
+  onForceCapture,
+  onInstantSlidePdf,
   recentFrames,
   recentSegments,
   onOpenSlidePreview,
@@ -36,13 +44,19 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
   return (
     <div className="flex-1 overflow-y-auto bg-slate-50 p-6 space-y-6">
       {/* Studio Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
               <span className={`w-2 h-2 rounded-full ${isCapturing ? 'bg-red-500 animate-ping' : 'bg-slate-400'}`} />
               {isCapturing ? 'OBSERVING TAB' : 'CAPTURE IDLE'}
             </span>
+            {isCapturing && (
+              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium">
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                Background Worker Active (Runs while you work in other apps)
+              </span>
+            )}
             <h2 className="text-lg font-bold text-slate-900 tracking-tight">Multimodal Observation Studio</h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
@@ -50,11 +64,33 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
           </p>
         </div>
 
-        <div>
+        <div className="flex items-center gap-2 flex-wrap">
+          {isCapturing && onForceCapture && (
+            <button
+              onClick={onForceCapture}
+              title="Manually force screenshot of current slide now"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shadow-sm transition-all active:scale-95"
+            >
+              <Camera className="w-3.5 h-3.5 text-indigo-600" />
+              Capture Slide Now
+            </button>
+          )}
+
+          {onInstantSlidePdf && recentFrames.length > 0 && (
+            <button
+              onClick={onInstantSlidePdf}
+              title="Generate and download 16:9 full-bleed slide PDF in 1 click"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 text-xs font-semibold shadow-sm transition-all active:scale-95"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-600" />
+              Instant 16:9 PDF ({recentFrames.length})
+            </button>
+          )}
+
           {isCapturing ? (
             <button
               onClick={onStopCapture}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
             >
               <Square className="w-3.5 h-3.5 fill-white" />
               Stop Capture
@@ -62,7 +98,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
           ) : (
             <button
               onClick={onStartCapture}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold shadow-sm transition-all active:scale-95"
             >
               <Play className="w-3.5 h-3.5 fill-white" />
               Start Chrome Observation
@@ -153,20 +189,35 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
 
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {recentSegments.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-400 text-xs">
-                <Clock className="w-6 h-6 mb-2 stroke-1 text-slate-400" />
-                Awaiting instructor speech stream...
+              <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 text-xs space-y-2">
+                <Clock className="w-8 h-8 stroke-1 text-slate-400" />
+                <p className="font-medium text-slate-700">Awaiting speech audio stream...</p>
+                <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-[11px] text-slate-600 max-w-xs text-left space-y-1">
+                  <p className="font-semibold text-slate-800">💡 Audio Setup Tips:</p>
+                  <p>• In the Chrome share dialog, select <strong>"Chrome Tab"</strong> and make sure <strong>"Also share tab audio"</strong> is checked.</p>
+                  <p>• Both the meeting speaker and your microphone will be transcribed with speaker identification!</p>
+                </div>
               </div>
             ) : (
-              recentSegments.map((seg) => (
-                <div key={seg.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
-                  <div className="flex items-center justify-between text-[10px] text-brand-700 font-mono">
-                    <span className="font-semibold">[{seg.timestamp_formatted}] {seg.speaker || 'Instructor'}</span>
-                    <span className="text-slate-400">{(seg.confidence * 100).toFixed(0)}% conf</span>
+              recentSegments.map((seg) => {
+                const isStudent = seg.speaker?.toLowerCase().includes('you') || seg.speaker?.toLowerCase().includes('student');
+                return (
+                  <div key={seg.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
+                        isStudent 
+                          ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      }`}>
+                        <User className="w-2.5 h-2.5" />
+                        {seg.speaker || 'Instructor'}
+                      </span>
+                      <span className="font-mono text-slate-400">[{seg.timestamp_formatted}]</span>
+                    </div>
+                    <p className="text-slate-800 leading-relaxed font-normal pt-0.5">{seg.text}</p>
                   </div>
-                  <p className="text-slate-800 leading-relaxed">{seg.text}</p>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
