@@ -22,7 +22,9 @@ export class SessionWebSocketClient {
       return;
     }
 
-    const wsUrl = `ws://localhost:8000/ws/session/${this.sessionId}`;
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = typeof window !== 'undefined' && window.location.host ? window.location.host : '127.0.0.1:8000';
+    const wsUrl = `${protocol}//${host}/ws/session/${this.sessionId}`;
     this.socket = new WebSocket(wsUrl);
 
     this.socket.onopen = () => {

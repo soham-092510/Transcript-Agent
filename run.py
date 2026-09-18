@@ -42,22 +42,49 @@ def main():
         print("\n[INFO] Building production frontend...")
         subprocess.run([npm_cmd, "run", "build"], cwd=frontend_dir, check=True)
 
+    import urllib.request
+    import urllib.error
+
+    def wait_for_service(url, name, timeout=25):
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                req = urllib.request.Request(url, headers={'User-Agent': 'LearnLensLauncher/1.0'})
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    if resp.status in (200, 304):
+                        return True
+            except Exception:
+                pass
+            time.sleep(0.5)
+        return False
+
     # Start Backend
     print("\n[2/4] Starting FastAPI backend on http://127.0.0.1:8000 ...")
-    backend_cmd = [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", "8000"]
+    backend_cmd = [sys.executable, "-m", "uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
     backend_proc = subprocess.Popen(backend_cmd, cwd=base_dir)
 
     # Start Frontend
-    print("\n[3/4] Starting Vite frontend on http://localhost:5173 ...")
+    print("\n[3/4] Starting Vite frontend on http://127.0.0.1:5173 ...")
     frontend_proc = subprocess.Popen([npm_cmd, "run", "dev"], cwd=frontend_dir)
 
-    time.sleep(3)
-    print("\n[4/4] Opening LearnLens AI Studio in your default browser...")
-    webbrowser.open("http://localhost:5173")
+    print("\n[4/4] Verifying services and opening LearnLens AI Studio...")
+    backend_ready = wait_for_service("http://127.0.0.1:8000/api/system/status", "FastAPI Backend", timeout=20)
+    if backend_ready:
+        print("      ✓ FastAPI Backend is ready (HTTP 200).")
+    else:
+        print("      ! Backend warming up...")
+
+    frontend_ready = wait_for_service("http://127.0.0.1:5173", "Vite Frontend", timeout=20)
+    if frontend_ready:
+        print("      ✓ Vite Frontend is ready (HTTP 200).")
+    else:
+        print("      ! Frontend warming up...")
+
+    webbrowser.open("http://127.0.0.1:5173")
 
     print("\n" + "=" * 65)
     print("🚀  LearnLens AI is LIVE!")
-    print("    • Frontend UI: http://localhost:5173")
+    print("    • Frontend UI: http://127.0.0.1:5173  (or http://localhost:5173)")
     print("    • Backend API: http://127.0.0.1:8000/docs")
     print("    • Press Ctrl+C anytime to stop all local services.")
     print("=" * 65 + "\n")

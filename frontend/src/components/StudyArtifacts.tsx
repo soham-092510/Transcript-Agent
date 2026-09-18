@@ -48,7 +48,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
     try {
       const res = await onGeneratePPT(selectedPptStyle, slideCount);
       if (res) {
-        setLastPPTUrl(`http://localhost:8000${res.download_url}`);
+        setLastPPTUrl(res.download_url);
       }
     } finally {
       setIsGeneratingPPT(false);
@@ -60,7 +60,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
       setIsGeneratingPDFReport(true);
       try {
         const res = await onGeneratePDF('teaching_report');
-        if (res) setLastPDFReportUrl(`http://localhost:8000${res.download_url}`);
+        if (res) setLastPDFReportUrl(res.download_url);
       } finally {
         setIsGeneratingPDFReport(false);
       }
@@ -68,7 +68,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
       setIsGeneratingVisualPack(true);
       try {
         const res = await onGeneratePDF('visual_pack');
-        if (res) setLastVisualPackUrl(`http://localhost:8000${res.download_url}`);
+        if (res) setLastVisualPackUrl(res.download_url);
       } finally {
         setIsGeneratingVisualPack(false);
       }

@@ -88,7 +88,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
             <div className="relative w-full aspect-video rounded-xl bg-slate-100 border border-slate-200 flex flex-col items-center justify-center overflow-hidden group">
               {recentFrames.length > 0 ? (
                 <img
-                  src={`http://localhost:8000/api/frames/${recentFrames[recentFrames.length - 1].id}/image`}
+                  src={`/api/frames/${recentFrames[recentFrames.length - 1].id}/image`}
                   alt="Live Capture"
                   className="w-full h-full object-contain"
                 />
@@ -194,7 +194,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
               >
                 <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-200 mb-2">
                   <img
-                    src={`http://localhost:8000/api/frames/${f.id}/thumbnail`}
+                    src={`/api/frames/${f.id}/thumbnail`}
                     alt="Slide"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                   />

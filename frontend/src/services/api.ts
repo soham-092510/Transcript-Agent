@@ -10,7 +10,14 @@ import {
   TeacherMode
 } from '../types';
 
-const API_BASE = 'http://localhost:8000/api';
+export const getApiBase = (): string => {
+  if (typeof window !== 'undefined') {
+    return '/api';
+  }
+  return 'http://127.0.0.1:8000/api';
+};
+
+export const API_BASE = getApiBase();
 
 export const api = {
   // System Status & Demo

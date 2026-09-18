@@ -106,7 +106,7 @@ export const SlideCollection: React.FC<SlideCollectionProps> = ({
                 onClick={() => setSelectedPreviewId(frame.id)}
               >
                 <img
-                  src={`http://localhost:8000/api/frames/${frame.id}/image`}
+                  src={`/api/frames/${frame.id}/image`}
                   alt="Lecture Slide"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
@@ -185,7 +185,7 @@ export const SlideCollection: React.FC<SlideCollectionProps> = ({
             {/* High Res Image */}
             <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
               <img
-                src={`http://localhost:8000/api/frames/${activeModalFrame.id}/image`}
+                src={`/api/frames/${activeModalFrame.id}/image`}
                 alt="Full preview"
                 className="w-full max-h-[480px] object-contain mx-auto"
               />

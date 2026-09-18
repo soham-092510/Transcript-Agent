@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Loader2, Sparkles, Radio, RefreshCw, AlertCircle, GraduationCap } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { HumanControlBar } from './components/HumanControlBar';
 import { ChatInterface } from './components/ChatInterface';
@@ -48,31 +49,53 @@ export function App() {
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
+  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+
   const wsClientRef = useRef<SessionWebSocketClient | null>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const quizInputRef = useRef<HTMLInputElement>(null);
 
-  // Initial load
+  // Initial load with retry loop
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  const loadInitialData = async () => {
-    try {
-      const status = await api.getSystemStatus();
-      setSystemStatus(status);
+  const loadInitialData = async (retries = 6, delayMs = 1000) => {
+    setIsLoadingInitial(true);
+    setConnectionError(null);
 
-      const sessList = await api.listSessions();
-      setSessions(sessList);
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        const status = await api.getSystemStatus();
+        setSystemStatus(status);
 
-      if (sessList.length > 0) {
-        selectSession(sessList[0]);
-      } else {
-        // Auto-seed demo on first launch
-        await handleLoadDemo();
+        let sessList = await api.listSessions();
+        if (!sessList || sessList.length === 0) {
+          try {
+            await api.seedDemo();
+            sessList = await api.listSessions();
+          } catch (seedErr) {
+            console.warn('Auto-seed demo note:', seedErr);
+          }
+        }
+
+        setSessions(sessList || []);
+
+        if (sessList && sessList.length > 0) {
+          await selectSession(sessList[0]);
+        }
+        setIsLoadingInitial(false);
+        return;
+      } catch (e: any) {
+        console.warn(`Connection attempt ${attempt}/${retries} failed:`, e);
+        if (attempt < retries) {
+          await new Promise(r => setTimeout(r, delayMs));
+        } else {
+          setConnectionError("Could not connect to LearnLens AI backend on port 8000. Please ensure 'python run.py' or uvicorn is running.");
+          setIsLoadingInitial(false);
+        }
       }
-    } catch (e) {
-      console.error('Failed to load initial data:', e);
     }
   };
 
@@ -478,15 +501,101 @@ export function App() {
               />
             )}
           </>
+        ) : isLoadingInitial ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+            <div className="relative mb-6">
+              <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-200 flex items-center justify-center text-brand-600 shadow-sm animate-pulse">
+                <GraduationCap className="w-8 h-8 text-brand-600" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-brand-200 flex items-center justify-center shadow-xs">
+                <Loader2 className="w-3.5 h-3.5 text-brand-600 animate-spin" />
+              </div>
+            </div>
+            <h2 className="text-base font-bold text-slate-800 tracking-tight">Connecting to LearnLens AI Engine</h2>
+            <p className="text-xs text-slate-500 mt-1 max-w-sm">
+              Initializing local multimodal observation pipeline, SQLite knowledge base, and AI teacher studio...
+            </p>
+            <div className="mt-5 flex items-center gap-2 text-[11px] text-slate-400 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>Local-first • Zero cloud telemetry • 100% Private</span>
+            </div>
+          </div>
+        ) : connectionError ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white">
+            <div className="w-16 h-16 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600 mb-4 shadow-sm">
+              <AlertCircle className="w-8 h-8 text-rose-500" />
+            </div>
+            <h2 className="text-base font-bold text-slate-800">Cannot Connect to LearnLens Backend</h2>
+            <p className="text-xs text-slate-500 mt-1.5 max-w-md">
+              {connectionError}
+            </p>
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                onClick={() => loadInitialData(5, 1000)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Retry Connection
+              </button>
+              <button
+                onClick={handleLoadDemo}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                Load Demo Session
+              </button>
+            </div>
+          </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-            <p className="text-sm font-medium text-slate-400">No session selected</p>
-            <button
-              onClick={() => setStartModalOpen(true)}
-              className="mt-4 px-4 py-2 rounded-xl bg-brand-500 text-white text-xs font-semibold"
-            >
-              Start Learning Now
-            </button>
+          <div className="flex-1 overflow-y-auto bg-slate-50 p-8 flex flex-col items-center justify-center">
+            <div className="max-w-xl w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center space-y-6">
+              <div className="w-14 h-14 rounded-2xl bg-brand-50 border border-brand-200 text-brand-600 mx-auto flex items-center justify-center shadow-xs">
+                <GraduationCap className="w-7 h-7 text-brand-600" />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                  Welcome to LearnLens AI Studio
+                </h2>
+                <p className="text-xs text-slate-500 leading-relaxed max-w-md mx-auto">
+                  Your local-first multimodal learning companion. Authorize any Chrome tab or video source to extract slides, transcribe speech, build grounded knowledge, and teach interactively.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left pt-2">
+                <button
+                  onClick={handleLoadDemo}
+                  className="p-4 rounded-xl border border-brand-200 bg-brand-50/50 hover:bg-brand-50 hover:border-brand-400 transition-all cursor-pointer group text-left shadow-xs"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Sparkles className="w-4 h-4 text-brand-600" />
+                    <span className="text-xs font-bold text-brand-900">Explore Demo Course</span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 leading-snug">
+                    Pre-loaded with 7-concept MIT lecture, slide captures, and interactive exam quiz.
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => setStartModalOpen(true)}
+                  className="p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-brand-300 transition-all cursor-pointer group text-left shadow-xs"
+                >
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <Radio className="w-4 h-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-slate-800">Start Chrome Observation</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 leading-snug">
+                    Authorize any browser tab (YouTube, Coursera, Udemy, etc.) for live AI capture.
+                  </p>
+                </button>
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Local SQLite Knowledge Base</span>
+                <span>12 Interactive Teacher Modes</span>
+                <span>Export PPTX & PDF</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
