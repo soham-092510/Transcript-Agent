@@ -83,7 +83,12 @@ export function App() {
         setSessions(sessList || []);
 
         if (sessList && sessList.length > 0) {
-          await selectSession(sessList[0]);
+          const preferredSession =
+            sessList.find(s => s.id === 'demo_cybersecurity_module_2') ||
+            sessList.find(s => s.is_pinned) ||
+            sessList.find(s => (s.concept_count || 0) > 0) ||
+            sessList[0];
+          await selectSession(preferredSession);
         }
         setIsLoadingInitial(false);
         return;
