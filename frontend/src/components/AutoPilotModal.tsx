@@ -23,6 +23,8 @@ interface AutoPilotModalProps {
   onClose: () => void;
   onSessionCreatedAndLoaded: (sessionId: string) => void;
   onQuickTeachPrompt: (promptText: string) => void;
+  onStartChromeTabAutoPilot?: (title: string) => void;
+  isCapturing?: boolean;
 }
 
 export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
@@ -30,10 +32,16 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
   onClose,
   onSessionCreatedAndLoaded,
   onQuickTeachPrompt,
+  onStartChromeTabAutoPilot,
+  isCapturing = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'batch' | 'autonext' | 'teach'>('batch');
+  const [activeTab, setActiveTab] = useState<'batch' | 'autonext' | 'teach'>('autonext');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [courseTitle, setCourseTitle] = useState('');
+  const [urlInput, setUrlInput] = useState('');
+  const [chromeCourseTitle, setChromeCourseTitle] = useState('Autonomous Chrome Tab Course');
+  const [selectedTurboSpeed, setSelectedTurboSpeed] = useState('8.0');
+  const [copiedTurboScript, setCopiedTurboScript] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressData, setProgressData] = useState<{
     is_running: boolean;
@@ -119,6 +127,54 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
       console.error('HyperIngest error:', e);
       setIsProcessing(false);
     }
+  };
+
+  const handleStartUrlIngest = async () => {
+    if (!urlInput.trim()) return;
+    setIsProcessing(true);
+    setLastPdfUrl(null);
+    setLastPptxUrl(null);
+
+    try {
+      const res = await api.hyperIngestUrl(urlInput.trim(), courseTitle || undefined);
+      if (res.session_id) {
+        setCompletedSessionId(res.session_id);
+        setIsProcessing(false);
+        await handleGenerateExports(res.session_id);
+      }
+    } catch (e: any) {
+      console.error('URL HyperIngest error:', e);
+      setIsProcessing(false);
+    }
+  };
+
+  const handleLaunchChromeTabAuto = () => {
+    if (onStartChromeTabAutoPilot) {
+      onStartChromeTabAutoPilot(chromeCourseTitle || "Autonomous Chrome Course");
+    }
+    onClose();
+  };
+
+  const handleCopyTurboScript = () => {
+    const script = `/* LearnLens AI Auto-Next & Turbo Speed Script */
+(function(){
+  const spd = ${selectedTurboSpeed};
+  const v = document.querySelector('video');
+  if (v) { v.playbackRate = spd; v.play(); }
+  console.log('[LearnLens AI] Auto-Pilot active at ' + spd + 'x playback speed.');
+  setInterval(() => {
+    const v = document.querySelector('video');
+    if (v && (v.ended || (v.duration > 0 && v.currentTime / v.duration > 0.992))) {
+      const next = document.querySelector('.ytp-next-button, button[data-e2e="next-item"], button[data-purpose="go-to-next-item"], .next-item-btn, button[aria-label="Next Item"], button.next-lecture');
+      if (next) { console.log('[LearnLens AI] Advancing to next lecture...'); next.click(); }
+    }
+    const confirmBtn = document.querySelector('yt-confirm-dialog-renderer #confirm-button button');
+    if (confirmBtn) confirmBtn.click();
+  }, 2000);
+})();`;
+    navigator.clipboard.writeText(script);
+    setCopiedTurboScript(true);
+    setTimeout(() => setCopiedTurboScript(false), 2500);
   };
 
   const handleGenerateExports = async (sessId: string) => {
@@ -250,8 +306,39 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                 )}
               </div>
 
+              {/* URL Ingestion Section */}
+              <div className="pt-2 border-t border-slate-200/80 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ExternalLink className="w-3.5 h-3.5 text-brand-600" />
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Or Ingest Online YouTube Playlist / Video URL
+                  </label>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={urlInput}
+                    onChange={(e) => setUrlInput(e.target.value)}
+                    placeholder="https://www.youtube.com/playlist?list=... or video URL"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                  />
+                  <button
+                    onClick={handleStartUrlIngest}
+                    disabled={!urlInput.trim() || isProcessing}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      urlInput.trim() && !isProcessing
+                        ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-sm cursor-pointer active:scale-95'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    Ingest URL
+                  </button>
+                </div>
+              </div>
+
               {/* Course Title Optional */}
-              {selectedFiles.length > 0 && (
+              {(selectedFiles.length > 0 || urlInput.trim()) && (
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                     Master Course Title
@@ -325,7 +412,7 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                     <div className="bg-white/80 p-2 rounded-lg border border-amber-200/50">
                       <span className="text-slate-400 block text-[10px]">Processing Video</span>
                       <span className="font-bold text-slate-800 font-mono">
-                        {progressData.current_video_idx} / {progressData.total_videos || selectedFiles.length}
+                        {progressData.current_video_idx} / {progressData.total_videos || selectedFiles.length || 1}
                       </span>
                     </div>
                     <div className="bg-white/80 p-2 rounded-lg border border-amber-200/50">
@@ -349,18 +436,18 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                 <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-5 space-y-3 animate-in fade-in">
                   <div className="flex items-center gap-2 text-xs font-bold text-emerald-900">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>HyperIngest Complete! 100% Course Synthesized & Ready</span>
+                    <span>Course Ingestion 100% Complete! Generated 16:9 Video-Size Slides:</span>
                   </div>
 
-                  <div className="flex flex-wrap gap-2.5 pt-1">
+                  <div className="flex items-center gap-3 pt-1">
                     {lastPdfUrl && (
                       <a
                         href={lastPdfUrl}
                         download
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold shadow-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-emerald-300 text-emerald-800 hover:bg-emerald-100 text-xs font-bold shadow-xs transition-colors"
                       >
-                        <FileText className="w-3.5 h-3.5" />
-                        Download 16:9 Slide PDF (Video Size Only)
+                        <FileText className="w-4 h-4 text-emerald-600" />
+                        Download 16:9 Slide PDF
                       </a>
                     )}
 
@@ -368,9 +455,9 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
                       <a
                         href={lastPptxUrl}
                         download
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 text-xs font-bold shadow-xs transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-amber-300 text-amber-900 hover:bg-amber-100 text-xs font-bold shadow-xs transition-colors"
                       >
-                        <Presentation className="w-3.5 h-3.5" />
+                        <Presentation className="w-4 h-4 text-amber-600" />
                         Download 16:9 Slide PPTX
                       </a>
                     )}
@@ -404,60 +491,108 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
             </div>
           )}
 
-          {/* TAB 2: BROWSER AUTO-NEXT */}
+          {/* TAB 2: CHROME TAB LIVE AUTO-PILOT */}
           {activeTab === 'autonext' && (
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-brand-50/70 border border-brand-200 space-y-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-brand-900">
-                  <Play className="w-4 h-4 text-brand-600" />
-                  <span>Hands-Free Auto-Next for Web Players</span>
+            <div className="space-y-5">
+              {/* Hero Banner */}
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-brand-500/15 to-emerald-500/15 border border-amber-300/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
+                    <Zap className="w-4 h-4 text-amber-600 fill-current" />
+                    <span>⚡ Autonomous Chrome Tab Auto-Pilot</span>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    HANDS-FREE LIVE MODE
+                  </span>
                 </div>
                 <p className="text-[11px] text-slate-600 leading-relaxed">
-                  Watching Coursera, YouTube Playlists, or Udemy online? LearnLens AI can automatically advance to the next lecture as soon as a video finishes, allowing you to walk away while the AI records and learns the entire curriculum.
+                  Let LearnLens AI observe your active Chrome tab (Coursera, YouTube Playlist, Udemy, or LMS). The AI automatically captures <strong>16:9 slides on genuine changes</strong>, extracts <strong>transcripts & speaker names</strong>, runs <strong>behind the scenes</strong> while you work in other apps, and automatically compiles your <strong>16:9 Slide PDF</strong>!
                 </p>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  How to Enable Hands-Free Continuous Play:
-                </h4>
-                
-                <div className="space-y-2 text-xs text-slate-700">
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
-                      1
-                    </span>
-                    <div>
-                      <p className="font-bold text-slate-800">Start Chrome Observation</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Click "Start Learning" and select the Chrome tab where your playlist is playing.
-                      </p>
-                    </div>
-                  </div>
+              {/* 1-Click Launch Card */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    Course / Playlist Name:
+                  </label>
+                  <input
+                    type="text"
+                    value={chromeCourseTitle}
+                    onChange={(e) => setChromeCourseTitle(e.target.value)}
+                    placeholder="e.g., Coursera Machine Learning Specialization or YouTube Python Playlist"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:outline-none focus:border-amber-500 focus:bg-white transition-colors"
+                  />
+                </div>
 
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
-                      2
-                    </span>
-                    <div>
-                      <p className="font-bold text-slate-800">Turn On Platform Autoplay</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Ensure the platform's native Autoplay toggle is turned ON (or use the LearnLens Chrome Extension in <code>/extension</code> to bypass "Are you still watching?" prompts).
-                      </p>
-                    </div>
-                  </div>
+                <button
+                  onClick={handleLaunchChromeTabAuto}
+                  className="w-full py-3 rounded-2xl bg-gradient-to-r from-brand-600 via-brand-500 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-500/25 transition-all cursor-pointer active:scale-98"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>🚀 Launch Auto-Pilot on Chrome Tab</span>
+                </button>
+                <p className="text-[10px] text-center text-slate-400">
+                  Select your Chrome tab (check "Also share tab audio" in the browser prompt).
+                </p>
+              </div>
 
-                  <div className="flex items-start gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200">
-                    <span className="w-5 h-5 rounded-full bg-brand-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
-                      3
-                    </span>
-                    <div>
-                      <p className="font-bold text-slate-800">Automatic Slide Capture & Completion</p>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        LearnLens AI takes screenshots automatically whenever a slide changes, continuously indexing knowledge across video after video without requiring you to click "Next".
-                      </p>
-                    </div>
-                  </div>
+              {/* Auto-Next & Speed Turbo Assist Card */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-brand-600" />
+                    Video Speed Turbo & Auto-Next Automation
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-500">Finish 11hrs in ~40m</span>
+                </div>
+
+                <p className="text-[11px] text-slate-600 leading-snug">
+                  Want the video in the Chrome tab to play at ultra-fast speed while LearnLens AI captures every slide? Choose a speed and click below:
+                </p>
+
+                <div className="flex items-center gap-2">
+                  {['2.0', '4.0', '8.0', '16.0'].map((spd) => (
+                    <button
+                      key={spd}
+                      onClick={() => setSelectedTurboSpeed(spd)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        selectedTurboSpeed === spd
+                          ? 'bg-amber-500 text-white shadow-xs'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {spd === '16.0' ? '⚡ 16x Turbo' : `${spd}x`}
+                    </button>
+                  ))}
+
+                  <button
+                    onClick={handleCopyTurboScript}
+                    className={`ml-auto px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      copiedTurboScript
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-white border border-brand-300 text-brand-700 hover:bg-brand-50'
+                    }`}
+                  >
+                    {copiedTurboScript ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Copied to Clipboard!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="w-3.5 h-3.5 fill-current" />
+                        <span>Copy {selectedTurboSpeed}x Auto-Next Script</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="bg-white p-3 rounded-xl border border-slate-200 text-[11px] text-slate-600 space-y-1">
+                  <p className="font-semibold text-slate-800">✨ How Hands-Free Auto-Next Works:</p>
+                  <p>1. <strong>Extension Auto-Advance</strong>: If you load the extension from <code>/extension</code>, it automatically clicks "Next" on Coursera, YouTube, and Udemy.</p>
+                  <p>2. <strong>1-Click Console/Bookmarklet</strong>: Or click "Copy {selectedTurboSpeed}x Auto-Next Script", press <kbd className="px-1 py-0.5 bg-slate-100 border border-slate-300 rounded font-mono text-[10px]">F12</kbd> on the video tab, and paste it into the Console.</p>
+                  <p>3. <strong>Background Worker</strong>: LearnLens AI will continue capturing slides & transcribing audio in the background even if you minimize Chrome or switch to other apps!</p>
                 </div>
               </div>
             </div>

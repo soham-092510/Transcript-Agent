@@ -241,6 +241,15 @@ export const api = {
     return res.json();
   },
 
+  async hyperIngestUrl(url: string, title?: string): Promise<{ status: string; session_id: string; message: string }> {
+    const res = await fetch(`${API_BASE}/video/hyper-ingest-url`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, title }),
+    });
+    return res.json();
+  },
+
   // 16:9 Video-Size Only Slide Exports
   async exportSlideOnlyPdf(sessionId: string): Promise<{ status: string; filename: string; download_url: string }> {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/export/slide-pdf`, {

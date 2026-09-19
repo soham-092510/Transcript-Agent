@@ -215,9 +215,81 @@ class HyperIngestService:
             return session_id
 
         except Exception as e:
-            logger.error(f"Error during HyperIngest: {e}", exc_info=True)
+            logger.error(f"Error during video batch ingestion: {e}", exc_info=True)
             self._current_task["is_running"] = False
-            self._current_task["status_message"] = f"Error: {str(e)}"
-            raise
+            self._current_task["status_message"] = f"Ingestion error: {str(e)}"
+            raise e
+        finally:
+            self._current_task["is_running"] = False
+
+    async def ingest_url(
+        self,
+        url: str,
+        course_title: Optional[str] = None,
+        max_videos: int = 50
+    ) -> str:
+        """
+        Downloads a YouTube playlist or video stream via yt-dlp,
+        then accelerates through it with HyperIngest keyframe seeking.
+        """
+        import shutil
+        from backend.app.core.config import SESSIONS_DIR
+        
+        batch_dir = SESSIONS_DIR / f"url_batch_{int(time.time())}"
+        batch_dir.mkdir(parents=True, exist_ok=True)
+        
+        self._current_task = {
+            "is_running": True,
+            "current_video_idx": 0,
+            "total_videos": 1,
+            "current_video_name": url,
+            "progress_pct": 5,
+            "total_slides_captured": 0,
+            "speed_multiplier": "Downloading stream...",
+            "status_message": f"Fetching video stream from {url}...",
+            "session_id": None,
+            "start_time": time.time()
+        }
+
+        try:
+            import yt_dlp
+
+            ydl_opts = {
+                'format': 'bestvideo[height<=720]+bestaudio/best[height<=720]/best',
+                'outtmpl': str(batch_dir / '%(playlist_index|0)02d_%(title).50s.%(ext)s'),
+                'quiet': True,
+                'no_warnings': True,
+                'max_downloads': max_videos,
+                'ignoreerrors': True
+            }
+
+            def _download():
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    info = ydl.extract_info(url, download=True)
+                    return info
+
+            loop = asyncio.get_event_loop()
+            info = await loop.run_in_executor(None, _download)
+
+            video_files = sorted([
+                str(p) for p in batch_dir.iterdir()
+                if p.suffix.lower() in ('.mp4', '.mkv', '.webm', '.avi', '.mov')
+            ])
+
+            if not video_files:
+                raise ValueError(f"Could not extract playable video stream from: {url}")
+
+            derived_title = course_title
+            if not derived_title and info:
+                derived_title = info.get('title') or info.get('playlist_title')
+
+            session_id = await self.ingest_video_batch(video_files, course_title=derived_title)
+            return session_id
+
+        finally:
+            try:
+                shutil.rmtree(batch_dir, ignore_errors=True)
+            except Exception:
+                pass
 
 hyper_ingest_service = HyperIngestService()

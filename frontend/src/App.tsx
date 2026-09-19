@@ -225,6 +225,17 @@ export function App() {
     }
   };
 
+  const handleFinishAndTeach = async () => {
+    if (isCapturing) {
+      handleStopCapture();
+    }
+    setCurrentTab('chat');
+    handleSendMessage(
+      "Please teach me everything covered in this lecture session. Break it down into clear concepts, explain the key slides captured, highlight important takeaways, and give me 3 practice review questions.",
+      'simple'
+    );
+  };
+
   // Demo session seeding
   const handleLoadDemo = async () => {
     const res = await api.seedDemo();
@@ -479,6 +490,8 @@ export function App() {
                 onStopCapture={handleStopCapture}
                 onForceCapture={handleForceCapture}
                 onInstantSlidePdf={handleInstantSlidePdf}
+                onFinishAndTeach={handleFinishAndTeach}
+                onOpenAutoPilotModal={() => setAutoModalOpen(true)}
                 recentFrames={frames}
                 recentSegments={segments}
                 onOpenSlidePreview={(fId) => {
@@ -669,6 +682,11 @@ export function App() {
       <AutoPilotModal
         isOpen={autoModalOpen}
         onClose={() => setAutoModalOpen(false)}
+        isCapturing={isCapturing}
+        onStartChromeTabAutoPilot={async (title) => {
+          setAutoModalOpen(false);
+          await handleConfirmStart(title || "Autonomous Chrome Tab Course", "Chrome Tab Auto-Pilot");
+        }}
         onSessionCreatedAndLoaded={async (sId) => {
           const updated = await api.listSessions();
           setSessions(updated);

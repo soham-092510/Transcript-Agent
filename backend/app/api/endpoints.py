@@ -2,6 +2,7 @@ import os
 import shutil
 import base64
 from typing import List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, JSONResponse
 
@@ -366,6 +367,28 @@ async def hyper_ingest_endpoint(files: List[UploadFile] = File(...), title: Opti
 @router.get("/video/hyper-ingest/status")
 async def get_hyper_ingest_status():
     return hyper_ingest_service.get_status()
+
+class HyperIngestUrlRequest(BaseModel):
+    url: str
+    title: Optional[str] = None
+    max_videos: Optional[int] = 50
+
+@router.post("/video/hyper-ingest-url")
+async def hyper_ingest_url_endpoint(req: HyperIngestUrlRequest):
+    """
+    HyperIngest URL Endpoint: Ingests YouTube playlists, videos, or course web links,
+    extracting 16:9 slides and completing courses in accelerated mode.
+    """
+    session_id = await hyper_ingest_service.ingest_url(
+        url=req.url,
+        course_title=req.title,
+        max_videos=req.max_videos or 50
+    )
+    return {
+        "status": "COMPLETED",
+        "session_id": session_id,
+        "message": f"Successfully ingested course stream from {req.url}"
+    }
 
 @router.post("/sessions/{session_id}/export/slide-pdf")
 async def export_slide_only_pdf(session_id: str):
