@@ -1,6 +1,8 @@
 # LearnLens AI 🎓
 > *"Show your AI what you are learning."*
 
+> 🎥 **Walkthrough Video Demo**: Watch the prototype demo video **[`Prototype.mp4`](Prototype.mp4)** in this repository to see LearnLens AI in action!
+
 **LearnLens AI** is a production-quality, local-first personal learning environment and multimodal AI teacher. It empowers learners to explicitly grant observation access to any active Chrome tab, window, or desktop display, continuously ingests educational content across audio, video frames, and OCR text, indexes the resulting knowledge into a private session-scoped knowledge base, and teaches through a ChatGPT-like interface.
 
 ---
@@ -176,14 +178,14 @@ flowchart TD
     Chrome["🌐 Chrome Browser Educational Tab (YouTube / Coursera / Fortinet)"]
     LLAI["🎓 0. LearnLens AI Core System"]
 
-    Chrome -->|Video Frames & Tab Audio Stream| LLAI
-    Human -->|Session Configuration & Natural Language Queries| LLAI
-    Human -->|Human Control Commands: Pause / Resume / Stop / Commands| LLAI
+    Chrome -->|"Video Frames & Tab Audio Stream"| LLAI
+    Human -->|"Session Configuration & Natural Language Queries"| LLAI
+    Human -->|"Human Control Commands: Pause / Resume / Stop"| LLAI
 
-    LLAI -->|Source-Grounded AI Tutoring Answers & Timestamp Citations| Human
-    LLAI -->|Generated 16:9 Presentation Decks (.pptx)| Human
-    LLAI -->|Visual Study Packs & AI Teaching Reports (.pdf)| Human
-    LLAI -->|Diagnostic Knowledge Gap Feedback & Remediation| Human
+    LLAI -->|"Source-Grounded AI Tutoring Answers & Timestamp Citations"| Human
+    LLAI -->|"Generated 16:9 Presentation Decks (.pptx)"| Human
+    LLAI -->|"Visual Study Packs & AI Teaching Reports (.pdf)"| Human
+    LLAI -->|"Diagnostic Knowledge Gap Feedback & Remediation"| Human
 ```
 
 ---
@@ -225,13 +227,13 @@ flowchart TD
     P4 -->|Grounded Answers & Citations| Human
     P4 -->|Update Queries & Viewed Concepts| D5
 
-    Human -->|Request PPT / PDF Artifacts| P5["5.0 Artifact Generation Engine"]
+    Human -->|"Request PPT / PDF Artifacts"| P5["5.0 Artifact Generation Engine"]
     D1 --> P5
     D2 --> P5
     D3 --> P5
-    P5 -->|Generated .pptx & .pdf Files| Human
+    P5 -->|"Generated .pptx & .pdf Files"| Human
 
-    Human -->|Practice Answers / Quiz PDF| P6["6.0 Formative Assessment Coach"]
+    Human -->|"Practice Answers / Quiz PDF"| P6["6.0 Formative Assessment Coach"]
     D1 --> P6
     P6 -->|Feedback & Update Weak Areas| D5
     P6 -->|Immediate Option Rationale| Human
@@ -249,8 +251,8 @@ flowchart LR
         V_IN["Video Frame"] --> GRAY["Convert to Grayscale (8x8)"]
         GRAY --> HASH["Compute 64-bit dHash"]
         HASH --> DIFF{"Hamming Distance > 10?"}
-        DIFF -->|No: Redundant| DISCARD["Discard Frame (Drop 85%+)"]
-        DIFF -->|Yes: State Change| SAVE["Store Keyframe JPEG"]
+        DIFF -->|"No: Redundant"| DISCARD["Discard Frame (Drop 85%+)"]
+        DIFF -->|"Yes: State Change"| SAVE["Store Keyframe JPEG"]
     end
 
     subgraph Analysis ["Visual Analysis & OCR"]
