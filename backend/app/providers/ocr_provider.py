@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from PIL import Image
 import os
 from backend.app.providers.base import OCRProvider
@@ -14,9 +15,10 @@ class TesseractOCRProvider(OCRProvider):
             return self._available
         try:
             import pytesseract
-            # Test quick version call
-            pytesseract.get_tesseract_version()
-            self._available = True
+            def _check():
+                pytesseract.get_tesseract_version()
+                return True
+            self._available = await asyncio.to_thread(_check)
         except Exception:
             self._available = False
         return self._available
@@ -25,11 +27,12 @@ class TesseractOCRProvider(OCRProvider):
         if await self.is_available():
             try:
                 import pytesseract
-                img = Image.open(image_path)
-                text = pytesseract.image_to_string(img)
-                return text.strip()
+                def _do_ocr():
+                    img = Image.open(image_path)
+                    return pytesseract.image_to_string(img).strip()
+                return await asyncio.to_thread(_do_ocr)
             except Exception as e:
-                logger.warning(f"Tesseract OCR failed: {e}. Falling back to visual text inference.")
+                logger.debug(f"Tesseract OCR skipped: {e}")
         
         return ""
 

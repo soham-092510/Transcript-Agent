@@ -26,11 +26,14 @@ class Settings:
     WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base")
     
     # Latency & Concurrency Safeguards
-    # During live meeting observation, keep VLM false by default so heavy GPU/CPU models don't freeze transcripts
+    # Fast mode delivers instant (<1ms) grounded synthesis during meetings so Ollama never pegs CPU or lags
+    FAST_MODE: bool = os.getenv("FAST_MODE", "true").lower() in ("true", "1")
     ENABLE_LIVE_VLM: bool = os.getenv("ENABLE_LIVE_VLM", "false").lower() in ("true", "1")
-    OLLAMA_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_TIMEOUT_SEC", "20.0"))
-    OLLAMA_CONNECT_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_CONNECT_TIMEOUT_SEC", "2.5"))
+    ENABLE_LIVE_WHISPER: bool = os.getenv("ENABLE_LIVE_WHISPER", "false").lower() in ("true", "1")
+    OLLAMA_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_TIMEOUT_SEC", "4.0"))
+    OLLAMA_CONNECT_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_CONNECT_TIMEOUT_SEC", "2.0"))
     MODEL_CHECK_CACHE_TTL_SEC: float = 15.0
+    WHISPER_CONCURRENCY_LIMIT: int = 1
     
     # Processing limits & parameters
     FRAME_SAMPLE_INTERVAL_SEC: float = 2.0

@@ -1,11 +1,13 @@
 import os
 import shutil
 import base64
+import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse, JSONResponse
 
+from backend.app.core.config import settings
 from backend.app.models.schemas import (
     LearningSession, CreateSessionRequest, UpdateSessionRequest,
     TranscriptSegment, FrameCapture, Concept, ChatMessage,
@@ -402,4 +404,37 @@ async def export_slide_only_pptx(session_id: str):
     output_path = await ppt_service.generate_slide_only_presentation(session_id)
     filename = os.path.basename(output_path)
     return {"status": "SUCCESS", "filename": filename, "download_url": f"/api/exports/{session_id}/{filename}"}
+
+# ----------------- SYSTEM SETTINGS & RUNTIME CONTROL -----------------
+class SystemSettingsUpdate(BaseModel):
+    fast_mode: Optional[bool] = None
+    default_model: Optional[str] = None
+    enable_live_vlm: Optional[bool] = None
+    enable_live_whisper: Optional[bool] = None
+
+@router.get("/system/settings")
+async def get_system_settings():
+    models = await llm_provider.get_models()
+    return {
+        "fast_mode": settings.FAST_MODE,
+        "default_llm_model": settings.DEFAULT_LLM_MODEL,
+        "enable_live_vlm": settings.ENABLE_LIVE_VLM,
+        "enable_live_whisper": settings.ENABLE_LIVE_WHISPER,
+        "ollama_timeout_sec": settings.OLLAMA_TIMEOUT_SEC,
+        "installed_models": models
+    }
+
+@router.post("/system/settings")
+async def update_system_settings(req: SystemSettingsUpdate):
+    if req.fast_mode is not None:
+        settings.FAST_MODE = req.fast_mode
+    if req.default_model:
+        settings.DEFAULT_LLM_MODEL = req.default_model
+        llm_provider.model = req.default_model
+    if req.enable_live_vlm is not None:
+        settings.ENABLE_LIVE_VLM = req.enable_live_vlm
+    if req.enable_live_whisper is not None:
+        settings.ENABLE_LIVE_WHISPER = req.enable_live_whisper
+    return {"status": "UPDATED", "settings": await get_system_settings()}
+
 

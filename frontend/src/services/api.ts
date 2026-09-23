@@ -263,5 +263,32 @@ export const api = {
       method: 'POST',
     });
     return res.json();
+  },
+
+  // System Settings
+  async getSystemSettings(): Promise<{
+    fast_mode: boolean;
+    default_llm_model: string;
+    enable_live_vlm: boolean;
+    enable_live_whisper: boolean;
+    ollama_timeout_sec: number;
+    installed_models: string[];
+  }> {
+    const res = await fetch(`${API_BASE}/system/settings`);
+    return res.json();
+  },
+
+  async updateSystemSettings(settings: {
+    fast_mode?: boolean;
+    default_model?: string;
+    enable_live_vlm?: boolean;
+    enable_live_whisper?: boolean;
+  }): Promise<{ status: string; settings: any }> {
+    const res = await fetch(`${API_BASE}/system/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings),
+    });
+    return res.json();
   }
 };

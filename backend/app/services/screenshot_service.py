@@ -173,9 +173,14 @@ class ScreenshotIntelligenceService:
             logger.error(f"Error processing frame: {e}", exc_info=True)
             return None
 
+    _is_enriching: bool = False
+
     @classmethod
     async def _enrich_frame_async(cls, session_id: str, frame_id: str, img_path: str, formatted_time: str):
         """Non-blocking background worker that enriches frame with OCR text and deep concepts."""
+        if cls._is_enriching:
+            return
+        cls._is_enriching = True
         try:
             from backend.app.services.knowledge_service import knowledge_service
             ocr_text = await ocr_provider.extract_text(img_path)
@@ -206,6 +211,8 @@ class ScreenshotIntelligenceService:
                 )
         except Exception as e:
             logger.debug(f"Background frame enrichment note: {e}")
+        finally:
+            cls._is_enriching = False
 
     @staticmethod
     def format_timestamp(sec: float) -> str:

@@ -42,8 +42,9 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-# Per-session flag to drop redundant in-flight frames
+# Per-session flags to drop redundant in-flight tasks
 _session_frame_busy: Dict[str, bool] = {}
+_session_audio_busy: Dict[str, bool] = {}
 
 async def _process_frame_async(session_id: str, img_bytes: bytes, timestamp_sec: float, force: bool):
     try:
@@ -103,6 +104,8 @@ async def _process_audio_async(session_id: str, audio_bytes: bytes, speaker: str
                 })
     except Exception as e:
         logger.error(f"Async audio processing error: {e}")
+    finally:
+        _session_audio_busy[session_id] = False
 
 async def _extract_concepts_async(session_id: str, text: str, formatted_ts: str):
     try:
@@ -121,6 +124,7 @@ async def _extract_concepts_async(session_id: str, text: str, formatted_ts: str)
 
 @ws_router.websocket("/ws/session/{session_id}")
 async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
+    from backend.app.core.config import settings
     await manager.connect(session_id, websocket)
     logger.info(f"WebSocket connected for session: {session_id}")
     try:
@@ -165,6 +169,10 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
 
             # 2. Real-time Audio Stream Chunk for Whisper STT (background worker)
             elif event_type == "audio_chunk":
+                # If live whisper is disabled or a chunk is already being processed, skip to avoid 100% CPU lock
+                if not settings.ENABLE_LIVE_WHISPER or _session_audio_busy.get(session_id, False):
+                    continue
+
                 b64_audio = payload.get("audio_base64", "")
                 if not b64_audio:
                     continue
@@ -175,8 +183,10 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                     b64_audio = b64_audio.split(",")[1]
                 try:
                     audio_bytes = base64.b64decode(b64_audio)
+                    _session_audio_busy[session_id] = True
                     asyncio.create_task(_process_audio_async(session_id, audio_bytes, speaker, timestamp_sec))
                 except Exception as b64_err:
+                    _session_audio_busy[session_id] = False
                     logger.debug(f"Audio base64 decode note: {b64_err}")
 
             # 3. Real-time Video Frame Capture (non-blocking with frame drop protection)
@@ -209,8 +219,10 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
         _session_frame_busy.pop(session_id, None)
+        _session_audio_busy.pop(session_id, None)
         logger.info(f"WebSocket disconnected for session: {session_id}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(session_id, websocket)
         _session_frame_busy.pop(session_id, None)
+        _session_audio_busy.pop(session_id, None)

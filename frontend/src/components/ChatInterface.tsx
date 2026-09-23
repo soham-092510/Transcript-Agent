@@ -9,7 +9,9 @@ import {
   MicOff, 
   Image as ImageIcon, 
   GraduationCap,
-  Clock
+  Clock,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import { ChatMessage, TeacherMode, LearningSession } from '../types';
 
@@ -57,6 +59,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   const [inputText, setInputText] = useState('');
   const [selectedMode, setSelectedMode] = useState<TeacherMode>('simple');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +83,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleSpeak = (id: string, text: string) => {
+    if (speakingId === id) {
+      window.speechSynthesis?.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis?.cancel();
+    const clean = text.replace(/[*#_`>•]/g, '');
+    const ut = new SpeechSynthesisUtterance(clean);
+    ut.rate = 1.05;
+    ut.onend = () => setSpeakingId(null);
+    ut.onerror = () => setSpeakingId(null);
+    setSpeakingId(id);
+    window.speechSynthesis?.speak(ut);
   };
 
   const handleVoiceInput = () => {
@@ -201,13 +220,22 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                     <span className="flex items-center gap-1 font-mono uppercase tracking-wider text-brand-700 font-bold">
                       Mode: {msg.mode.replace('_', ' ')}
                     </span>
-                    <button
-                      onClick={() => handleCopy(msg.id, msg.text)}
-                      className="hover:text-slate-900 p-1 rounded transition-colors"
-                      title="Copy response"
-                    >
-                      {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-brand-600" /> : <Copy className="w-3.5 h-3.5" />}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleSpeak(msg.id, msg.text)}
+                        className={`p-1 rounded transition-colors ${speakingId === msg.id ? 'text-red-500 bg-red-50' : 'hover:text-slate-900 text-slate-400'}`}
+                        title={speakingId === msg.id ? "Stop voice" : "Read aloud (Text-to-Speech)"}
+                      >
+                        {speakingId === msg.id ? <VolumeX className="w-3.5 h-3.5 animate-pulse" /> : <Volume2 className="w-3.5 h-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => handleCopy(msg.id, msg.text)}
+                        className="hover:text-slate-900 p-1 rounded transition-colors text-slate-400"
+                        title="Copy response"
+                      >
+                        {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-brand-600" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 )}
 

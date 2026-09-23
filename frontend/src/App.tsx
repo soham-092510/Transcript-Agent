@@ -12,6 +12,7 @@ import { QuizPracticeModal } from './components/QuizPracticeModal';
 import { LearnerProfileView } from './components/LearnerProfileView';
 import { StartLearningModal } from './components/StartLearningModal';
 import { AutoPilotModal } from './components/AutoPilotModal';
+import { SettingsModal } from './components/SettingsModal';
 
 import { api } from './services/api';
 import { SessionWebSocketClient } from './services/websocket';
@@ -48,6 +49,7 @@ export function App() {
 
   const [startModalOpen, setStartModalOpen] = useState(false);
   const [autoModalOpen, setAutoModalOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -435,6 +437,7 @@ export function App() {
         systemStatus={systemStatus}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        onOpenSettings={() => setSettingsOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -709,6 +712,12 @@ export function App() {
           handleSendMessage(promptText, 'simple');
           setCurrentTab('chat');
         }}
+      />
+
+      {/* Settings & AI Engine Configuration Modal */}
+      <SettingsModal
+        isOpen={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
       />
     </div>
   );

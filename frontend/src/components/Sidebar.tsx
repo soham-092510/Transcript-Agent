@@ -15,6 +15,7 @@ import {
   Pin, 
   Trash2, 
   Search,
+  Settings,
 } from 'lucide-react';
 import { LearningSession, SystemStatus } from '../types';
 
@@ -32,6 +33,7 @@ interface SidebarProps {
   systemStatus: SystemStatus | null;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  onOpenSettings?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   systemStatus,
   searchQuery,
   setSearchQuery,
+  onOpenSettings,
 }) => {
   const pinnedSessions = sessions.filter(s => s.is_pinned);
   const recentSessions = sessions.filter(s => !s.is_pinned);
@@ -220,14 +223,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Status Panel */}
       <div className="p-3 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-600">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-1.5">
           <span className="flex items-center gap-1.5 font-medium">
-            <span className={`w-2 h-2 rounded-full ${systemStatus?.ollama_connected ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-            Ollama AI: {systemStatus?.ollama_connected ? 'Connected' : 'Local Fallback'}
+            <span className={`w-2 h-2 rounded-full ${systemStatus?.ollama_connected ? 'bg-emerald-500' : 'bg-emerald-500'}`} />
+            <span className="truncate">AI: {systemStatus?.ollama_connected ? 'Ollama Online' : 'Zero-Lag Mode'}</span>
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 text-slate-700 font-mono font-semibold">
-            v1.0.0
+          {onOpenSettings && (
+            <button
+              onClick={onOpenSettings}
+              title="Open System & AI Settings"
+              className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-slate-400">
+          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-200">
+            0.0s Lag Shield
           </span>
+          <span className="font-mono">v1.0.0</span>
         </div>
       </div>
     </aside>

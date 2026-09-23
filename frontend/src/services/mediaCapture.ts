@@ -287,6 +287,10 @@ export class BrowserMediaCaptureManager {
   isCapturing(): boolean {
     return !!(this.mediaStream && this.mediaStream.active);
   }
+
+  getMediaStream(): MediaStream | null {
+    return this.mediaStream;
+  }
 }
 
 export const mediaCaptureManager = new BrowserMediaCaptureManager();
