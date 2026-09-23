@@ -10,13 +10,13 @@ from pptx.enum.text import PP_ALIGN
 from backend.app.models.schemas import PPTStyle
 from backend.app.db.database import DatabaseManager, get_session_dir
 
-# Professional Palette
-BG_DARK = RGBColor(15, 23, 42)       # Slate 900
-TEXT_WHITE = RGBColor(248, 250, 252) # Slate 50
-TEXT_MUTED = RGBColor(148, 163, 184) # Slate 400
-ACCENT_GREEN = RGBColor(34, 197, 94) # Emerald 500
-ACCENT_CYAN = RGBColor(6, 182, 212)  # Cyan 500
-CARD_BG = RGBColor(30, 41, 59)       # Slate 800
+# Modern White Aesthetic Palette
+BG_WHITE = RGBColor(255, 255, 255)       # Clean White
+TEXT_DARK = RGBColor(15, 23, 42)         # Slate 900
+TEXT_MUTED = RGBColor(71, 85, 105)       # Slate 600
+ACCENT_GREEN = RGBColor(16, 185, 129)    # Emerald 600
+ACCENT_CYAN = RGBColor(8, 145, 178)      # Cyan 600
+CARD_BG = RGBColor(248, 250, 252)        # Slate 50
 
 class PPTGenerationService:
     """
@@ -52,7 +52,7 @@ class PPTGenerationService:
             p.text = f"No slide captures found for {session.title}"
             p.font.size = Pt(20)
             p.font.bold = True
-            p.font.color.rgb = BG_DARK
+            p.font.color.rgb = TEXT_DARK
         else:
             for f in valid_frames:
                 slide = prs.slides.add_slide(blank_layout)
@@ -137,7 +137,7 @@ class PPTGenerationService:
         background = slide.background
         fill = background.fill
         fill.solid()
-        fill.fore_color.rgb = BG_DARK
+        fill.fore_color.rgb = BG_WHITE
 
     @classmethod
     def _add_title_slide(cls, prs, layout, title: str, platform: str):
@@ -158,7 +158,7 @@ class PPTGenerationService:
         p1.text = title
         p1.font.bold = True
         p1.font.size = Pt(40)
-        p1.font.color.rgb = TEXT_WHITE
+        p1.font.color.rgb = TEXT_DARK
         p1.space_before = Pt(16)
 
         p2 = tf.add_paragraph()
@@ -185,7 +185,7 @@ class PPTGenerationService:
             p.text = f"0{i+1}.  {name}"
             p.font.bold = True
             p.font.size = Pt(20)
-            p.font.color.rgb = TEXT_WHITE
+            p.font.color.rgb = TEXT_DARK
             p.space_before = Pt(18)
 
             sub_p = tf.add_paragraph()
@@ -216,7 +216,7 @@ class PPTGenerationService:
             p1.text = c.name
             p1.font.bold = True
             p1.font.size = Pt(22)
-            p1.font.color.rgb = TEXT_WHITE
+            p1.font.color.rgb = TEXT_DARK
             p1.space_before = Pt(8)
 
             p2 = tf.add_paragraph()
@@ -259,7 +259,7 @@ class PPTGenerationService:
         p1 = tf.add_paragraph()
         p1.text = frame.visual_description
         p1.font.size = Pt(16)
-        p1.font.color.rgb = TEXT_WHITE
+        p1.font.color.rgb = TEXT_DARK
         p1.space_before = Pt(12)
 
         if frame.ocr_text:
@@ -303,7 +303,7 @@ class PPTGenerationService:
             p.text = title
             p.font.bold = True
             p.font.size = Pt(16)
-            p.font.color.rgb = TEXT_WHITE
+            p.font.color.rgb = TEXT_DARK
             p.space_before = Pt(14)
 
             p_desc = tf.add_paragraph()
@@ -335,7 +335,7 @@ class PPTGenerationService:
             "Unidentified visitors are immediately stopped at the perimeter."
         )
         p1.font.size = Pt(16)
-        p1.font.color.rgb = TEXT_WHITE
+        p1.font.color.rgb = TEXT_DARK
         p1.space_before = Pt(14)
 
     @classmethod
@@ -365,7 +365,7 @@ class PPTGenerationService:
             p = tf.add_paragraph()
             p.text = f"•  {b}"
             p.font.size = Pt(15)
-            p.font.color.rgb = TEXT_WHITE
+            p.font.color.rgb = TEXT_DARK
             p.space_before = Pt(12)
 
     @classmethod
@@ -387,7 +387,7 @@ class PPTGenerationService:
         p1.text = "Review, Practice, and Master"
         p1.font.bold = True
         p1.font.size = Pt(36)
-        p1.font.color.rgb = TEXT_WHITE
+        p1.font.color.rgb = TEXT_DARK
         p1.space_before = Pt(14)
 
         p2 = tf.add_paragraph()
@@ -412,7 +412,7 @@ class PPTGenerationService:
         p1.text = title
         p1.font.bold = True
         p1.font.size = Pt(26)
-        p1.font.color.rgb = TEXT_WHITE
+        p1.font.color.rgb = TEXT_DARK
         p1.space_before = Pt(4)
 
 ppt_service = PPTGenerationService()
