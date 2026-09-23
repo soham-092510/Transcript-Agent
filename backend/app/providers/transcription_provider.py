@@ -28,9 +28,12 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
 
     async def transcribe_audio_file(self, audio_path: str) -> List[Dict[str, Any]]:
         model = self._load_model()
-        if model is not None:
+        if model is None:
+            return []
+
+        def _sync_transcribe():
             try:
-                segments, _ = model.transcribe(audio_path, beam_size=5)
+                segments, _ = model.transcribe(audio_path, beam_size=1)
                 results = []
                 for s in segments:
                     results.append({
@@ -42,9 +45,13 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
                 return results
             except Exception as e:
                 logger.error(f"Whisper transcription failed: {e}")
+                return []
+
+        import asyncio
+        return await asyncio.to_thread(_sync_transcribe)
+
     async def transcribe_audio_bytes(self, audio_bytes: bytes, speaker_hint: str = "Instructor") -> List[Dict[str, Any]]:
         import tempfile
-        import time
         suffix = ".webm" if audio_bytes[:4] == b'\x1a\x45\xdf\xa3' else ".wav"
         with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
             tmp.write(audio_bytes)
@@ -52,9 +59,9 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
 
         try:
             segments = await self.transcribe_audio_file(tmp_path)
-            for s in segments:
+            for s in (segments or []):
                 s["speaker"] = speaker_hint
-            return segments
+            return segments or []
         finally:
             try:
                 if os.path.exists(tmp_path):

@@ -103,11 +103,15 @@ class PPTGenerationService:
         if concepts:
             cls._add_concepts_slide(prs, blank_layout, concepts[:3])
 
-        # 4. Slide: Visual Architecture & Diagram
-        diagram_frames = [f for f in frames if f.category.value == "DIAGRAM" or f.importance_score > 0.8]
-        top_frame = diagram_frames[0] if diagram_frames else (frames[0] if frames else None)
-        if top_frame and os.path.exists(top_frame.image_path):
-            cls._add_visual_slide(prs, blank_layout, top_frame)
+        # 4. Slides: Captured Visual Slides & Architecture Diagrams
+        # Dynamically include captured frames up to requested slide count
+        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
+        max_visual_slides = max(1, min(len(valid_frames), slide_count - 4))
+        for v_frame in valid_frames[:max_visual_slides]:
+            try:
+                cls._add_visual_slide(prs, blank_layout, v_frame)
+            except Exception as e:
+                print(f"Could not add visual slide for {v_frame.id}: {e}")
 
         # 5. Slide: Mechanism & In-Depth Flow
         if len(concepts) > 1:
@@ -122,7 +126,8 @@ class PPTGenerationService:
         # 8. Slide: Conclusion & Actionable Review
         cls._add_conclusion_slide(prs, blank_layout, session.title)
 
-        filename = f"LearnLens_{session.title.replace(' ', '_')[:30]}_{int(time.time())}.pptx"
+        safe_title = "".join(c for c in session.title.replace(" ", "_") if c.isalnum() or c in ("_", "-"))[:30] or "Session"
+        filename = f"LearnLens_{safe_title}_{int(time.time())}.pptx"
         output_path = exports_dir / filename
         prs.save(str(output_path))
         return str(output_path)

@@ -10,8 +10,14 @@ from backend.app.models.schemas import (
 )
 
 def get_db_connection() -> sqlite3.Connection:
-    conn = sqlite3.connect(settings.DB_PATH)
+    conn = sqlite3.connect(str(settings.DB_PATH), timeout=10.0)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA busy_timeout=5000;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+    except Exception:
+        pass
     return conn
 
 def init_db():
@@ -359,6 +365,28 @@ class DatabaseManager:
             importance_score=row["importance_score"], concepts=json.loads(row["concepts"] or "[]"),
             is_pinned=bool(row["is_pinned"])
         )
+
+    @staticmethod
+    def update_frame_metadata(frame_id: str, updates: Dict[str, Any]):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        set_clauses = []
+        values = []
+        for k, v in updates.items():
+            set_clauses.append(f"{k} = ?")
+            if isinstance(v, (dict, list)):
+                values.append(json.dumps(v))
+            elif isinstance(v, bool):
+                values.append(1 if v else 0)
+            elif hasattr(v, "value"):
+                values.append(v.value)
+            else:
+                values.append(v)
+        values.append(frame_id)
+        query = f"UPDATE frames SET {', '.join(set_clauses)} WHERE id = ?"
+        cursor.execute(query, tuple(values))
+        conn.commit()
+        conn.close()
 
     @staticmethod
     def add_concept(concept: Concept):

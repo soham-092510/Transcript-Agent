@@ -9,33 +9,77 @@ from backend.app.providers.base import VLMProvider
 from backend.app.core.config import settings
 from backend.app.models.schemas import VisualCategory
 
+import time
+
 logger = logging.getLogger(__name__)
 
 class LocalOllamaVLMProvider(VLMProvider):
     def __init__(self, base_url: str = settings.OLLAMA_BASE_URL, model: str = settings.DEFAULT_VLM_MODEL):
         self.base_url = base_url
         self.model = model
-        self.client = httpx.AsyncClient(timeout=60.0)
+        self._cached_available: Optional[bool] = None
+        self._cached_models: List[str] = []
+        self._last_check_time: float = 0.0
+        self._client: Optional[httpx.AsyncClient] = None
 
-    async def is_available(self) -> bool:
+    def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None or self._client.is_closed:
+            timeout = httpx.Timeout(
+                connect=settings.OLLAMA_CONNECT_TIMEOUT_SEC,
+                read=10.0,
+                write=10.0,
+                pool=settings.OLLAMA_CONNECT_TIMEOUT_SEC
+            )
+            self._client = httpx.AsyncClient(timeout=timeout)
+        return self._client
+
+    async def is_available(self, force_refresh: bool = False) -> bool:
+        # If live VLM is disabled, don't even poll to save CPU/network
+        if not settings.ENABLE_LIVE_VLM:
+            return False
+
+        now = time.time()
+        if not force_refresh and self._cached_available is not None and (now - self._last_check_time) < settings.MODEL_CHECK_CACHE_TTL_SEC:
+            return self._cached_available
+
+        client = self._get_client()
         try:
-            resp = await self.client.get(f"{self.base_url}/api/tags")
+            resp = await client.get(f"{self.base_url}/api/tags")
             if resp.status_code == 200:
                 models = [m.get("name", "") for m in resp.json().get("models", [])]
-                return any("vl" in m.lower() or "vision" in m.lower() or "llava" in m.lower() for m in models)
+                self._cached_models = models
+                has_vision = any("vl" in m.lower() or "vision" in m.lower() or "llava" in m.lower() for m in models)
+                self._cached_available = has_vision
+                self._last_check_time = now
+                return has_vision
         except Exception:
             pass
+
+        self._cached_available = False
+        self._cached_models = []
+        self._last_check_time = now
         return False
 
+    def _resolve_vision_model(self) -> str:
+        for m in self._cached_models:
+            m_low = m.lower()
+            if any(k in m_low for k in ["vl", "vision", "llava"]):
+                return m
+        return self.model
+
     async def analyze_image(self, image_path: str, prompt: str = "Analyze this educational slide") -> Dict[str, Any]:
-        # 1. Attempt VLM via Ollama if vision model is available
+        # Fast path: If live VLM is disabled or no vision model is available, use ultra-fast OpenCV heuristics (<5ms)
+        if not settings.ENABLE_LIVE_VLM:
+            return self._heuristic_cv_analysis(image_path)
+
         if await self.is_available():
             try:
+                target_model = self._resolve_vision_model()
                 with open(image_path, "rb") as img_f:
                     b64_img = base64.b64encode(img_f.read()).decode("utf-8")
                 
                 payload = {
-                    "model": self.model,
+                    "model": target_model,
                     "prompt": (
                         "Analyze this educational slide or screen frame. "
                         "Determine: 1. Category (TITLE, SLIDE, DIAGRAM, CODE, TABLE, DEFINITION, DEMO, CONFIGURATION). "
@@ -44,14 +88,16 @@ class LocalOllamaVLMProvider(VLMProvider):
                     "images": [b64_img],
                     "stream": False
                 }
-                resp = await self.client.post(f"{self.base_url}/api/generate", json=payload)
+                client = self._get_client()
+                resp = await client.post(f"{self.base_url}/api/generate", json=payload)
                 if resp.status_code == 200:
                     text_resp = resp.json().get("response", "")
-                    return self._parse_vlm_response(text_resp, image_path)
+                    if text_resp:
+                        return self._parse_vlm_response(text_resp, image_path)
             except Exception as e:
-                logger.warning(f"VLM call failed: {e}. Falling back to Computer Vision heuristics.")
+                logger.debug(f"Live VLM bypassed or timed out: {e}. Using Computer Vision heuristics.")
 
-        # 2. Heuristic Computer Vision Fallback
+        # Heuristic Computer Vision Fallback (instant <5ms)
         return self._heuristic_cv_analysis(image_path)
 
     def _heuristic_cv_analysis(self, image_path: str) -> Dict[str, Any]:

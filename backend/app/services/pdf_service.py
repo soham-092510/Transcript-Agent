@@ -40,8 +40,9 @@ class PDFGenerationService:
         
         session_dir = get_session_dir(session_id)
         exports_dir = session_dir / "exports"
+        exports_dir.mkdir(parents=True, exist_ok=True)
 
-        safe_title = session.title.replace(" ", "_")[:25]
+        safe_title = "".join(c for c in session.title.replace(" ", "_") if c.isalnum() or c in ("_", "-"))[:25] or "Session"
         timestamp_str = int(time.time())
 
         if pdf_type in ("slide_only", "video_size"):

@@ -5,6 +5,8 @@ import io
 import base64
 import os
 import time
+import asyncio
+import logging
 from pathlib import Path
 from typing import Optional, Tuple, Dict, Any
 
@@ -13,6 +15,8 @@ from backend.app.models.schemas import FrameCapture, VisualCategory
 from backend.app.db.database import DatabaseManager, get_session_dir
 from backend.app.providers.vlm_provider import vlm_provider
 from backend.app.providers.ocr_provider import ocr_provider
+
+logger = logging.getLogger(__name__)
 
 class ScreenshotIntelligenceService:
     """
@@ -123,20 +127,12 @@ class ScreenshotIntelligenceService:
             thumb_img.thumbnail((320, 180), Image.Resampling.LANCZOS)
             thumb_img.save(thumb_path, "JPEG", quality=80)
             
-            # Extract OCR text
-            ocr_text = await ocr_provider.extract_text(str(img_path))
-            
-            # Run visual analysis via VLM or CV heuristics
-            vlm_res = await vlm_provider.analyze_image(str(img_path))
-            
-            category = vlm_res.get("category", VisualCategory.SLIDE)
-            description = vlm_res.get("visual_description", "Lecture visual")
-            importance = vlm_res.get("importance_score", 0.7)
-            concepts = vlm_res.get("concepts", [])
-            
-            # If OCR found substantial text, boost importance
-            if len(ocr_text) > settings.MIN_OCR_CHARS_SIGNIFICANT:
-                importance = min(1.0, importance + 0.15)
+            # Use ultra-fast Computer Vision heuristics (<5ms) for immediate classification
+            cv_res = vlm_provider._heuristic_cv_analysis(str(img_path))
+            category = cv_res.get("category", VisualCategory.SLIDE)
+            description = cv_res.get("visual_description", "Lecture visual")
+            importance = cv_res.get("importance_score", 0.7)
+            concepts = cv_res.get("concepts", [])
                 
             frame_capture = FrameCapture(
                 session_id=session_id,
@@ -145,13 +141,14 @@ class ScreenshotIntelligenceService:
                 image_path=str(img_path),
                 thumbnail_path=str(thumb_path),
                 p_hash=cur_hash,
-                ocr_text=ocr_text,
+                ocr_text="",
                 visual_description=description,
                 category=category,
                 importance_score=importance,
                 concepts=concepts
             )
             
+            # Persist to DB immediately so UI and slide reel update with zero lag
             DatabaseManager.add_frame(frame_capture)
 
             # Update in-memory tracker
@@ -159,14 +156,56 @@ class ScreenshotIntelligenceService:
                 "p_hash": cur_hash,
                 "timestamp_sec": timestamp_sec,
                 "saved_at": time.time(),
-                "ocr_text": ocr_text
+                "ocr_text": ""
             }
+
+            # Asynchronously run OCR & knowledge extraction in background so meet never freezes
+            asyncio.create_task(cls._enrich_frame_async(
+                session_id=session_id,
+                frame_id=frame_capture.id,
+                img_path=str(img_path),
+                formatted_time=formatted_time
+            ))
 
             return frame_capture
             
         except Exception as e:
-            print(f"Error processing frame: {e}")
+            logger.error(f"Error processing frame: {e}", exc_info=True)
             return None
+
+    @classmethod
+    async def _enrich_frame_async(cls, session_id: str, frame_id: str, img_path: str, formatted_time: str):
+        """Non-blocking background worker that enriches frame with OCR text and deep concepts."""
+        try:
+            from backend.app.services.knowledge_service import knowledge_service
+            ocr_text = await ocr_provider.extract_text(img_path)
+            updates: Dict[str, Any] = {}
+            if ocr_text:
+                updates["ocr_text"] = ocr_text
+                if len(ocr_text) > settings.MIN_OCR_CHARS_SIGNIFICANT:
+                    updates["importance_score"] = 0.85
+
+            if settings.ENABLE_LIVE_VLM:
+                try:
+                    vlm_res = await vlm_provider.analyze_image(img_path)
+                    if vlm_res:
+                        updates["category"] = vlm_res.get("category", VisualCategory.SLIDE).value
+                        updates["visual_description"] = vlm_res.get("visual_description", "")
+                except Exception as vlm_err:
+                    logger.debug(f"Live VLM background error: {vlm_err}")
+
+            if updates:
+                DatabaseManager.update_frame_metadata(frame_id, updates)
+
+            # Extract concepts if significant OCR text is discovered
+            if ocr_text and len(ocr_text.strip()) > 15:
+                await knowledge_service.extract_knowledge_from_chunk(
+                    session_id=session_id,
+                    transcript_text=f"Slide Title/Notes: {ocr_text}",
+                    timestamp_formatted=formatted_time
+                )
+        except Exception as e:
+            logger.debug(f"Background frame enrichment note: {e}")
 
     @staticmethod
     def format_timestamp(sec: float) -> str:

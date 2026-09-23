@@ -25,6 +25,13 @@ class Settings:
     DEFAULT_VLM_MODEL: str = os.getenv("DEFAULT_VLM_MODEL", "qwen2.5-vl:latest")
     WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base")
     
+    # Latency & Concurrency Safeguards
+    # During live meeting observation, keep VLM false by default so heavy GPU/CPU models don't freeze transcripts
+    ENABLE_LIVE_VLM: bool = os.getenv("ENABLE_LIVE_VLM", "false").lower() in ("true", "1")
+    OLLAMA_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_TIMEOUT_SEC", "20.0"))
+    OLLAMA_CONNECT_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_CONNECT_TIMEOUT_SEC", "2.5"))
+    MODEL_CHECK_CACHE_TTL_SEC: float = 15.0
+    
     # Processing limits & parameters
     FRAME_SAMPLE_INTERVAL_SEC: float = 2.0
     PERCEPTUAL_HASH_DIFF_THRESHOLD: int = 4

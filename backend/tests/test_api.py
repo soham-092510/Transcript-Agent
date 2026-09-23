@@ -68,3 +68,29 @@ def test_ppt_and_pdf_generation_endpoints():
     })
     assert pdf_res.status_code == 200
     assert "filename" in pdf_res.json()
+
+def test_slide_only_pdf_and_pptx_endpoints():
+    # Test 16:9 video-size slide deck exports
+    pdf_res = client.post("/api/sessions/demo_cybersecurity_module_2/export/slide-pdf")
+    assert pdf_res.status_code == 200
+    assert "filename" in pdf_res.json()
+    assert pdf_res.json()["filename"].endswith(".pdf")
+
+    pptx_res = client.post("/api/sessions/demo_cybersecurity_module_2/export/slide-pptx")
+    assert pptx_res.status_code == 200
+    assert "filename" in pptx_res.json()
+    assert pptx_res.json()["filename"].endswith(".pptx")
+
+def test_empty_session_exports_resilience():
+    # Create empty session
+    s_res = client.post("/api/sessions", json={"title": "Empty Session", "source_platform": "Meet"})
+    assert s_res.status_code == 200
+    sid = s_res.json()["id"]
+
+    # PPT generation must succeed without crashing
+    ppt_res = client.post(f"/api/sessions/{sid}/generate-ppt", json={"session_id": sid, "slide_count": 5})
+    assert ppt_res.status_code == 200
+
+    # PDF generation must succeed without crashing
+    pdf_res = client.post(f"/api/sessions/{sid}/generate-pdf", json={"session_id": sid, "pdf_type": "visual_pack"})
+    assert pdf_res.status_code == 200

@@ -138,7 +138,19 @@ export function App() {
           }
         },
         onFrameAnalyzed: (newFrame) => {
-          setFrames(prev => [...prev, newFrame]);
+          setFrames(prev => {
+            if (prev.some(f => f.id === newFrame.id)) return prev;
+            return [...prev, newFrame];
+          });
+        },
+        onConceptsUpdated: (newConcepts) => {
+          if (newConcepts && newConcepts.length > 0) {
+            setConcepts(prev => {
+              const existingIds = new Set(prev.map(c => c.id));
+              const additions = newConcepts.filter(c => !existingIds.has(c.id));
+              return [...prev, ...additions];
+            });
+          }
         }
       });
       wsClientRef.current.connect();

@@ -50,6 +50,15 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
   onOpenSlidePreview,
 }) => {
   const [copiedSpeed, setCopiedSpeed] = useState<string | null>(null);
+  const [capturedFlash, setCapturedFlash] = useState(false);
+
+  const handleTriggerForceCapture = () => {
+    if (onForceCapture) {
+      onForceCapture();
+      setCapturedFlash(true);
+      setTimeout(() => setCapturedFlash(false), 1600);
+    }
+  };
 
   const handleCopySpeed = (spd: string) => {
     const script = `/* LearnLens AI Turbo Speed */ (function(){ const spd = ${spd}; document.querySelectorAll('video').forEach(v => { v.playbackRate = spd; v.play(); }); console.log('[LearnLens AI] Video playback speed set to ' + spd + 'x'); })();`;
@@ -83,12 +92,25 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
         <div className="flex items-center gap-2 flex-wrap">
           {isCapturing && onForceCapture && (
             <button
-              onClick={onForceCapture}
+              onClick={handleTriggerForceCapture}
               title="Manually force screenshot of current slide now"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold shadow-sm transition-all active:scale-95"
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold shadow-sm transition-all active:scale-95 ${
+                capturedFlash
+                  ? 'bg-emerald-600 text-white border border-emerald-700'
+                  : 'bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 text-indigo-700'
+              }`}
             >
-              <Camera className="w-3.5 h-3.5 text-indigo-600" />
-              Capture Slide Now
+              {capturedFlash ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span>Slide Captured!</span>
+                </>
+              ) : (
+                <>
+                  <Camera className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Capture Slide Now</span>
+                </>
+              )}
             </button>
           )}
 

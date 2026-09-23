@@ -8,7 +8,7 @@ export interface CaptureCallbacks {
 class BackgroundWorkerTimer {
   private worker: Worker | null = null;
 
-  start(intervalMs: number, onTick: () => void) {
+  start(intervalMs: number, onTick: () => void): boolean {
     this.stop();
     try {
       const code = `
@@ -31,8 +31,10 @@ class BackgroundWorkerTimer {
         }
       };
       this.worker.postMessage('start');
+      return true;
     } catch (e) {
-      console.warn('Web Worker timer fallback to setInterval:', e);
+      console.warn('Web Worker timer unavailable, falling back to interval:', e);
+      return false;
     }
   }
 
@@ -60,6 +62,7 @@ export class BrowserMediaCaptureManager {
   private speechDenied: boolean = false;
   private mediaRecorder: MediaRecorder | null = null;
   private audioContext: AudioContext | null = null;
+  private isCapturingFrame: boolean = false;
 
   async startCapture(callbacks: CaptureCallbacks, options?: { enableMic?: boolean }) {
     this.callbacks = callbacks;
@@ -106,15 +109,16 @@ export class BrowserMediaCaptureManager {
       this.canvasElement.height = 720;
 
       // 4. Start background-safe worker frame sampling (every 2.5 seconds)
-      // Web Worker timer does NOT get throttled by Chrome when tab is minimized or user switches apps!
-      this.workerTimer.start(2500, () => {
+      // Fix: ONLY run one timer. Fallback to setInterval only if Web Worker failed!
+      const workerStarted = this.workerTimer.start(2500, () => {
         this.sampleCurrentFrame(false);
       });
 
-      // Fallback standard interval in case Web Worker is disabled in environment
-      this.fallbackIntervalId = setInterval(() => {
-        this.sampleCurrentFrame(false);
-      }, 2500);
+      if (!workerStarted) {
+        this.fallbackIntervalId = setInterval(() => {
+          this.sampleCurrentFrame(false);
+        }, 2500);
+      }
 
       // Initial frame immediately
       setTimeout(() => this.sampleCurrentFrame(true), 600);
@@ -137,13 +141,21 @@ export class BrowserMediaCaptureManager {
     if (!this.videoElement || !this.canvasElement || !this.mediaStream || !this.callbacks) {
       return;
     }
-    const ctx = this.canvasElement.getContext('2d');
-    if (!ctx) return;
+    if (this.isCapturingFrame && !force) {
+      return;
+    }
+    this.isCapturingFrame = true;
+    try {
+      const ctx = this.canvasElement.getContext('2d');
+      if (!ctx) return;
 
-    ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
-    const base64Data = this.canvasElement.toDataURL('image/jpeg', 0.82);
-    const timestampSec = (Date.now() - this.startTime) / 1000.0;
-    this.callbacks.onFrameCaptured(base64Data, timestampSec, force);
+      ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
+      const base64Data = this.canvasElement.toDataURL('image/jpeg', 0.82);
+      const timestampSec = (Date.now() - this.startTime) / 1000.0;
+      this.callbacks.onFrameCaptured(base64Data, timestampSec, force);
+    } finally {
+      this.isCapturingFrame = false;
+    }
   }
 
   forceCapture() {

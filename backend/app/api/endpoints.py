@@ -172,26 +172,20 @@ async def upload_audio_chunk(
 
 @router.get("/frames/{frame_id}/image")
 async def get_frame_image(frame_id: str):
-    # Find frame in DB
-    conn = DatabaseManager.get_session
-    import sqlite3
-    from backend.app.core.config import settings
-    conn = sqlite3.connect(settings.DB_PATH)
-    conn.row_factory = sqlite3.Row
+    from backend.app.db.database import get_db_connection
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT image_path FROM frames WHERE id = ?", (frame_id,))
     row = cursor.fetchone()
     conn.close()
     if not row or not os.path.exists(row["image_path"]):
         raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(row["image_path"], media_type="image/jpeg")
+    return FileResponse(row["image_path"], media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
 
 @router.get("/frames/{frame_id}/thumbnail")
 async def get_frame_thumbnail(frame_id: str):
-    import sqlite3
-    from backend.app.core.config import settings
-    conn = sqlite3.connect(settings.DB_PATH)
-    conn.row_factory = sqlite3.Row
+    from backend.app.db.database import get_db_connection
+    conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT thumbnail_path, image_path FROM frames WHERE id = ?", (frame_id,))
     row = cursor.fetchone()
@@ -201,7 +195,7 @@ async def get_frame_thumbnail(frame_id: str):
     target = row["thumbnail_path"] if row["thumbnail_path"] and os.path.exists(row["thumbnail_path"]) else row["image_path"]
     if not os.path.exists(target):
         raise HTTPException(status_code=404, detail="Image file missing")
-    return FileResponse(target, media_type="image/jpeg")
+    return FileResponse(target, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
 
 # ----------------- CONCEPTS -----------------
 @router.get("/sessions/{session_id}/concepts", response_model=List[Concept])
