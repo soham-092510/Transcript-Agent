@@ -20,7 +20,23 @@ class SessionScopedRAGService:
         cross_session: bool = False
     ) -> Dict[str, Any]:
         query_vec = await embedding_provider.get_embedding(query)
-        query_terms = set(re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', query.lower()))
+        raw_terms = re.findall(r'\b[a-zA-Z0-9_-]{2,}\b', query.lower())
+        stopwords = {
+            "who", "is", "are", "the", "of", "and", "in", "to", "a", "an", "for", 
+            "with", "what", "how", "why", "can", "you", "tell", "me", "about", 
+            "hi", "hello", "hey", "this", "that", "from", "on", "at", "by"
+        }
+        meaningful_terms = {t for t in raw_terms if t not in stopwords and len(t) >= 3}
+
+        # If question contains no domain terms (e.g. pure greeting), return empty context immediately
+        if not meaningful_terms:
+            return {
+                "formatted_context": "",
+                "evidence": [],
+                "concepts": [],
+                "transcripts": [],
+                "frames": []
+            }
 
         sessions_to_search = [session_id]
         if cross_session:
@@ -33,16 +49,18 @@ class SessionScopedRAGService:
         evidence_citations: List[EvidenceItem] = []
 
         for sid in sessions_to_search:
-            # 1. Search concepts
+            # 1. Search concepts (require term overlap with query)
             concepts = DatabaseManager.get_concepts(sid)
             for c in concepts:
                 c_text = f"{c.name} {c.definition} {c.simple_explanation or ''} {' '.join(c.related_concepts)}"
+                c_words = set(re.findall(r'\b\w+\b', c_text.lower()))
+                overlap = len(c_words.intersection(meaningful_terms))
+                if overlap == 0:
+                    continue
+
                 c_vec = await embedding_provider.get_embedding(c_text)
                 sim = embedding_provider.cosine_similarity(query_vec, c_vec)
-                # Boost if exact keyword match
-                name_words = set(re.findall(r'\b\w+\b', c.name.lower()))
-                if name_words.intersection(query_terms):
-                    sim += 0.35
+                sim += min(0.5, 0.15 * overlap)
 
                 matched_concepts.append({
                     "concept": c,
@@ -50,15 +68,17 @@ class SessionScopedRAGService:
                     "session_id": sid
                 })
 
-            # 2. Search transcripts
+            # 2. Search transcripts (require term overlap with query)
             segments = DatabaseManager.get_transcript_segments(sid)
             for seg in segments:
+                seg_words = set(re.findall(r'\b\w+\b', seg.text.lower()))
+                overlap = len(seg_words.intersection(meaningful_terms))
+                if overlap == 0:
+                    continue
+
                 s_vec = await embedding_provider.get_embedding(seg.text)
                 sim = embedding_provider.cosine_similarity(query_vec, s_vec)
-                seg_words = set(re.findall(r'\b\w+\b', seg.text.lower()))
-                overlap = len(seg_words.intersection(query_terms))
-                if overlap > 0:
-                    sim += min(0.4, 0.1 * overlap)
+                sim += min(0.5, 0.12 * overlap)
 
                 matched_transcripts.append({
                     "segment": seg,
@@ -66,12 +86,19 @@ class SessionScopedRAGService:
                     "session_id": sid
                 })
 
-            # 3. Search frames
+            # 3. Search frames (require term overlap with query)
             frames = DatabaseManager.get_frames(sid)
             for f in frames:
                 f_text = f"{f.ocr_text} {f.visual_description} {' '.join(f.concepts)}"
+                f_words = set(re.findall(r'\b\w+\b', f_text.lower()))
+                overlap = len(f_words.intersection(meaningful_terms))
+                if overlap == 0:
+                    continue
+
                 f_vec = await embedding_provider.get_embedding(f_text)
                 sim = embedding_provider.cosine_similarity(query_vec, f_vec)
+                sim += min(0.4, 0.1 * overlap)
+
                 matched_frames.append({
                     "frame": f,
                     "score": sim,
@@ -83,9 +110,9 @@ class SessionScopedRAGService:
         matched_transcripts.sort(key=lambda x: x["score"], reverse=True)
         matched_frames.sort(key=lambda x: x["score"], reverse=True)
 
-        top_concepts = [item["concept"] for item in matched_concepts[:top_k] if item["score"] > 0.15]
-        top_transcripts = [item["segment"] for item in matched_transcripts[:top_k] if item["score"] > 0.15]
-        top_frames = [item["frame"] for item in matched_frames[:top_k] if item["score"] > 0.15]
+        top_concepts = [item["concept"] for item in matched_concepts[:top_k] if item["score"] >= 0.40]
+        top_transcripts = [item["segment"] for item in matched_transcripts[:top_k] if item["score"] >= 0.40]
+        top_frames = [item["frame"] for item in matched_frames[:top_k] if item["score"] >= 0.40]
 
         # Build evidence citations
         seen_ts = set()
