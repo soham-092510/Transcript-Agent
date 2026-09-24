@@ -23,7 +23,8 @@ class Settings:
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     DEFAULT_LLM_MODEL: str = os.getenv("DEFAULT_LLM_MODEL", "qwen2.5:latest")
     DEFAULT_VLM_MODEL: str = os.getenv("DEFAULT_VLM_MODEL", "qwen2.5-vl:latest")
-    WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "base")
+    WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "tiny.en")
+    WHISPER_LANGUAGE: str = os.getenv("WHISPER_LANGUAGE", "en")
     
     # Latency & Concurrency Safeguards
     # Fast mode delivers instant (<1ms) grounded synthesis during meetings so Ollama never pegs CPU or lags

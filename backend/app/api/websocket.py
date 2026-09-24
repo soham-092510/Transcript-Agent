@@ -44,7 +44,24 @@ manager = ConnectionManager()
 
 # Per-session flags to drop redundant in-flight tasks
 _session_frame_busy: Dict[str, bool] = {}
-_session_audio_busy: Dict[str, bool] = {}
+_session_audio_queues: Dict[str, asyncio.Queue] = {}
+_session_audio_workers: Dict[str, asyncio.Task] = {}
+_session_last_tail: Dict[str, str] = {}
+
+def _deduplicate_overlap(last_tail: str, new_text: str) -> str:
+    """Strip overlapping words at chunk boundary from sliding-window audio capture."""
+    if not last_tail or not new_text:
+        return new_text.strip()
+    last_words = [w.lower().strip(".,?!;:") for w in last_tail.split()]
+    new_words = new_text.strip().split()
+    clean_new = [w.lower().strip(".,?!;:") for w in new_words]
+
+    max_k = min(len(last_words), len(clean_new), 6)
+    for k in range(max_k, 0, -1):
+        if last_words[-k:] == clean_new[:k]:
+            remaining = new_words[k:]
+            return " ".join(remaining).strip()
+    return new_text.strip()
 
 async def _process_frame_async(session_id: str, img_bytes: bytes, timestamp_sec: float, force: bool):
     try:
@@ -69,14 +86,21 @@ async def _process_audio_async(session_id: str, audio_bytes: bytes, speaker: str
         from backend.app.providers.transcription_provider import transcription_provider
         segments = await transcription_provider.transcribe_audio_bytes(audio_bytes, speaker_hint=speaker)
         for s in (segments or []):
-            seg_text = s.get("text", "").strip()
+            raw_text = s.get("text", "").strip()
+            if not raw_text:
+                continue
+
+            last_tail = _session_last_tail.get(session_id, "")
+            seg_text = _deduplicate_overlap(last_tail, raw_text)
             if not seg_text:
                 continue
+            _session_last_tail[session_id] = raw_text
+
             formatted_ts = screenshot_service.format_timestamp(timestamp_sec)
             segment = TranscriptSegment(
                 session_id=session_id,
                 timestamp_start=timestamp_sec,
-                timestamp_end=timestamp_sec + 5.0,
+                timestamp_end=timestamp_sec + 2.0,
                 timestamp_formatted=formatted_ts,
                 speaker=speaker,
                 text=seg_text,
@@ -84,7 +108,7 @@ async def _process_audio_async(session_id: str, audio_bytes: bytes, speaker: str
             )
             DatabaseManager.add_transcript_segment(segment)
 
-            # Broadcast immediately
+            # Broadcast immediately so words appear on screen with zero delay
             await manager.broadcast(session_id, {
                 "event": "transcript_received",
                 "segment": segment.dict(),
@@ -104,8 +128,20 @@ async def _process_audio_async(session_id: str, audio_bytes: bytes, speaker: str
                 })
     except Exception as e:
         logger.error(f"Async audio processing error: {e}")
-    finally:
-        _session_audio_busy[session_id] = False
+
+async def _session_audio_worker(session_id: str):
+    queue = _session_audio_queues.get(session_id)
+    if not queue:
+        return
+    while True:
+        try:
+            audio_bytes, speaker, timestamp_sec = await queue.get()
+            await _process_audio_async(session_id, audio_bytes, speaker, timestamp_sec)
+            queue.task_done()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.error(f"Audio queue worker error: {e}")
 
 async def _extract_concepts_async(session_id: str, text: str, formatted_ts: str):
     try:
@@ -167,10 +203,9 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                 # Background concept extraction
                 asyncio.create_task(_extract_concepts_async(session_id, text, formatted_ts))
 
-            # 2. Real-time Audio Stream Chunk for Whisper STT (background worker)
+            # 2. Real-time Audio Stream Chunk for Whisper STT (background queue worker)
             elif event_type == "audio_chunk":
-                # If live whisper is disabled or a chunk is already being processed, skip to avoid 100% CPU lock
-                if not settings.ENABLE_LIVE_WHISPER or _session_audio_busy.get(session_id, False):
+                if not settings.ENABLE_LIVE_WHISPER:
                     continue
 
                 b64_audio = payload.get("audio_base64", "")
@@ -183,10 +218,19 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                     b64_audio = b64_audio.split(",")[1]
                 try:
                     audio_bytes = base64.b64decode(b64_audio)
-                    _session_audio_busy[session_id] = True
-                    asyncio.create_task(_process_audio_async(session_id, audio_bytes, speaker, timestamp_sec))
+                    if session_id not in _session_audio_queues:
+                        _session_audio_queues[session_id] = asyncio.Queue(maxsize=10)
+                        _session_audio_workers[session_id] = asyncio.create_task(_session_audio_worker(session_id))
+
+                    queue = _session_audio_queues[session_id]
+                    if queue.full():
+                        try:
+                            queue.get_nowait()
+                            queue.task_done()
+                        except Exception:
+                            pass
+                    await queue.put((audio_bytes, speaker, timestamp_sec))
                 except Exception as b64_err:
-                    _session_audio_busy[session_id] = False
                     logger.debug(f"Audio base64 decode note: {b64_err}")
 
             # 3. Real-time Video Frame Capture (non-blocking with frame drop protection)
@@ -219,10 +263,20 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
     except WebSocketDisconnect:
         manager.disconnect(session_id, websocket)
         _session_frame_busy.pop(session_id, None)
-        _session_audio_busy.pop(session_id, None)
+        if session_id not in manager.active_connections:
+            w = _session_audio_workers.pop(session_id, None)
+            if w and not w.done():
+                w.cancel()
+            _session_audio_queues.pop(session_id, None)
+            _session_last_tail.pop(session_id, None)
         logger.info(f"WebSocket disconnected for session: {session_id}")
     except Exception as e:
         logger.error(f"WebSocket error: {e}")
         manager.disconnect(session_id, websocket)
         _session_frame_busy.pop(session_id, None)
-        _session_audio_busy.pop(session_id, None)
+        if session_id not in manager.active_connections:
+            w = _session_audio_workers.pop(session_id, None)
+            if w and not w.done():
+                w.cancel()
+            _session_audio_queues.pop(session_id, None)
+            _session_last_tail.pop(session_id, None)

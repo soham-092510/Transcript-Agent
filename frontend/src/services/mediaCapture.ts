@@ -63,6 +63,9 @@ export class BrowserMediaCaptureManager {
   private speechDenied: boolean = false;
   private mediaRecorder: MediaRecorder | null = null;
   private audioContext: AudioContext | null = null;
+  private audioProcessor: ScriptProcessorNode | null = null;
+  private audioSourceNode: MediaStreamAudioSourceNode | null = null;
+  private silentGain: GainNode | null = null;
   private isCapturingFrame: boolean = false;
 
   async startCapture(callbacks: CaptureCallbacks, options?: { enableMic?: boolean }) {
@@ -179,33 +182,120 @@ export class BrowserMediaCaptureManager {
         return;
       }
 
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) {
+        console.warn('Web Audio API not supported in this browser.');
+        return;
+      }
+
+      // Initialize AudioContext at 16kHz (native Whisper sample rate)
+      this.audioContext = new AudioContextClass({ sampleRate: 16000 });
+      const actualSampleRate = this.audioContext.sampleRate || 16000;
+
       const combinedStream = new MediaStream(audioTracks);
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-        ? 'audio/webm;codecs=opus' 
-        : (MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '');
+      this.audioSourceNode = this.audioContext.createMediaStreamSource(combinedStream);
 
-      const recorderOptions: MediaRecorderOptions = mimeType ? { mimeType } : {};
-      this.mediaRecorder = new MediaRecorder(combinedStream, recorderOptions);
+      // Buffer size 4096 gives ~250ms audio blocks at 16kHz
+      const bufferSize = 4096;
+      this.audioProcessor = this.audioContext.createScriptProcessor(bufferSize, 1, 1);
 
-      this.mediaRecorder.ondataavailable = async (e: BlobEvent) => {
-        if (e.data && e.data.size > 2000 && this.callbacks?.onAudioChunk) {
-          const timestampSec = (Date.now() - this.startTime) / 1000.0;
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const b64 = reader.result as string;
-            if (b64 && this.callbacks?.onAudioChunk) {
-              this.callbacks.onAudioChunk(b64, timestampSec, 'Speaker');
+      // Silent gain node prevents audio loopback to speakers while keeping audio processor active
+      this.silentGain = this.audioContext.createGain();
+      this.silentGain.gain.value = 0.0;
+
+      this.audioSourceNode.connect(this.audioProcessor);
+      this.audioProcessor.connect(this.silentGain);
+      this.silentGain.connect(this.audioContext.destination);
+
+      let accumulatedSamples: number[] = [];
+      let previousOverlap: number[] = [];
+      // 1.0s target new audio (16,000 samples) + 0.3s sliding overlap (4,800 samples)
+      const targetNewSamples = Math.round(actualSampleRate * 1.0);
+      const overlapLength = Math.round(actualSampleRate * 0.3);
+
+      this.audioProcessor.onaudioprocess = (e: AudioProcessingEvent) => {
+        if (!this.callbacks?.onAudioChunk) return;
+
+        const inputChannel = e.inputBuffer.getChannelData(0);
+        for (let i = 0; i < inputChannel.length; i++) {
+          accumulatedSamples.push(inputChannel[i]);
+        }
+
+        if (accumulatedSamples.length >= targetNewSamples) {
+          const currentChunk = accumulatedSamples;
+          accumulatedSamples = [];
+
+          // Prepend previous overlap so words at chunk boundaries are never split
+          const fullBuffer = previousOverlap.concat(currentChunk);
+          previousOverlap = currentChunk.slice(-overlapLength);
+
+          // Calculate RMS to discard silence and only process actual speech/sound
+          let sumSquares = 0;
+          for (let i = 0; i < fullBuffer.length; i++) {
+            sumSquares += fullBuffer[i] * fullBuffer[i];
+          }
+          const rms = Math.sqrt(sumSquares / fullBuffer.length);
+
+          if (rms > 0.003) {
+            const timestampSec = (Date.now() - this.startTime) / 1000.0;
+            const wavBase64 = this.encodeWAVBase64(fullBuffer, actualSampleRate);
+            if (wavBase64 && this.callbacks?.onAudioChunk) {
+              this.callbacks.onAudioChunk(wavBase64, timestampSec, 'Speaker');
             }
-          };
-          reader.readAsDataURL(e.data);
+          }
         }
       };
-
-      // Emit audio chunk every 2.5 seconds for responsive tab audio transcription
-      this.mediaRecorder.start(2500);
     } catch (e) {
       console.warn('Audio streaming setup note:', e);
     }
+  }
+
+  private encodeWAVBase64(samples: number[], sampleRate: number): string {
+    const numSamples = samples.length;
+    const buffer = new ArrayBuffer(44 + numSamples * 2);
+    const view = new DataView(buffer);
+
+    const writeString = (offset: number, str: string) => {
+      for (let i = 0; i < str.length; i++) {
+        view.setUint8(offset + i, str.charCodeAt(i));
+      }
+    };
+
+    // RIFF header
+    writeString(0, 'RIFF');
+    view.setUint32(4, 36 + numSamples * 2, true);
+    writeString(8, 'WAVE');
+
+    // fmt sub-chunk
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+    view.setUint16(20, 1, true);  // AudioFormat (1 = PCM)
+    view.setUint16(22, 1, true);  // NumChannels (1 = Mono)
+    view.setUint32(24, sampleRate, true); // SampleRate
+    view.setUint32(28, sampleRate * 2, true); // ByteRate
+    view.setUint16(32, 2, true);  // BlockAlign
+    view.setUint16(34, 16, true); // BitsPerSample
+
+    // data sub-chunk
+    writeString(36, 'data');
+    view.setUint32(40, numSamples * 2, true);
+
+    // PCM 16-bit signed integer samples
+    let offset = 44;
+    for (let i = 0; i < numSamples; i++) {
+      const s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+      offset += 2;
+    }
+
+    // Convert to binary string in chunks to prevent stack overflow
+    let binary = '';
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+    }
+    return 'data:audio/wav;base64,' + btoa(binary);
   }
 
   private setupSpeechRecognition() {
@@ -274,6 +364,25 @@ export class BrowserMediaCaptureManager {
     if (this.fallbackIntervalId) {
       clearInterval(this.fallbackIntervalId);
       this.fallbackIntervalId = null;
+    }
+    if (this.audioProcessor) {
+      try {
+        this.audioProcessor.disconnect();
+        this.audioProcessor.onaudioprocess = null;
+      } catch (_) {}
+      this.audioProcessor = null;
+    }
+    if (this.audioSourceNode) {
+      try { this.audioSourceNode.disconnect(); } catch (_) {}
+      this.audioSourceNode = null;
+    }
+    if (this.silentGain) {
+      try { this.silentGain.disconnect(); } catch (_) {}
+      this.silentGain = null;
+    }
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      try { this.audioContext.close(); } catch (_) {}
+      this.audioContext = null;
     }
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       try { this.mediaRecorder.stop(); } catch (_) {}

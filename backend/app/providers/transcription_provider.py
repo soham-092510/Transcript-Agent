@@ -33,15 +33,27 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
 
         def _sync_transcribe():
             try:
-                segments, _ = model.transcribe(audio_path, beam_size=1)
+                lang = getattr(settings, "WHISPER_LANGUAGE", "en")
+                segments, _ = model.transcribe(
+                    audio_path,
+                    beam_size=1,
+                    best_of=1,
+                    temperature=0.0,
+                    language=lang,
+                    vad_filter=True,
+                    condition_on_previous_text=False,
+                    vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
+                )
                 results = []
                 for s in segments:
-                    results.append({
-                        "start": s.start,
-                        "end": s.end,
-                        "text": s.text.strip(),
-                        "confidence": 0.95
-                    })
+                    seg_text = s.text.strip()
+                    if seg_text:
+                        results.append({
+                            "start": s.start,
+                            "end": s.end,
+                            "text": seg_text,
+                            "confidence": 0.95
+                        })
                 return results
             except Exception as e:
                 logger.error(f"Whisper transcription failed: {e}")
@@ -51,22 +63,92 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
         return await asyncio.to_thread(_sync_transcribe)
 
     async def transcribe_audio_bytes(self, audio_bytes: bytes, speaker_hint: str = "Instructor") -> List[Dict[str, Any]]:
-        import tempfile
-        suffix = ".webm" if audio_bytes[:4] == b'\x1a\x45\xdf\xa3' else ".wav"
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
-            tmp.write(audio_bytes)
-            tmp_path = tmp.name
+        if not audio_bytes:
+            return []
 
-        try:
-            segments = await self.transcribe_audio_file(tmp_path)
-            for s in (segments or []):
-                s["speaker"] = speaker_hint
-            return segments or []
-        finally:
+        model = self._load_model()
+        if model is None:
+            return []
+
+        import io
+        import asyncio
+
+        def _sync_transcribe_bytes():
             try:
-                if os.path.exists(tmp_path):
-                    os.remove(tmp_path)
-            except Exception:
-                pass
+                lang = getattr(settings, "WHISPER_LANGUAGE", "en")
+                
+                # If valid WAV (starts with 'RIFF') or WebM, transcribe directly from in-memory BytesIO
+                is_wav = audio_bytes[:4] == b'RIFF'
+                is_webm = audio_bytes[:4] == b'\x1a\x45\xdf\xa3'
+
+                if is_wav or is_webm:
+                    try:
+                        audio_stream = io.BytesIO(audio_bytes)
+                        segments, _ = model.transcribe(
+                            audio_stream,
+                            beam_size=1,
+                            best_of=1,
+                            temperature=0.0,
+                            language=lang,
+                            vad_filter=True,
+                            condition_on_previous_text=False,
+                            vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
+                        )
+                        results = []
+                        for s in segments:
+                            seg_text = s.text.strip()
+                            if seg_text:
+                                results.append({
+                                    "start": s.start,
+                                    "end": s.end,
+                                    "text": seg_text,
+                                    "confidence": 0.95,
+                                    "speaker": speaker_hint
+                                })
+                        return results
+                    except Exception as in_mem_err:
+                        logger.debug(f"In-memory transcription fallback required: {in_mem_err}")
+
+                # Fallback to temporary file for any legacy formats
+                import tempfile
+                suffix = ".wav" if is_wav else ".webm"
+                with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+                    tmp.write(audio_bytes)
+                    tmp_path = tmp.name
+
+                try:
+                    segments, _ = model.transcribe(
+                        tmp_path,
+                        beam_size=1,
+                        best_of=1,
+                        temperature=0.0,
+                        language=lang,
+                        vad_filter=True,
+                        condition_on_previous_text=False,
+                        vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
+                    )
+                    results = []
+                    for s in segments:
+                        seg_text = s.text.strip()
+                        if seg_text:
+                            results.append({
+                                "start": s.start,
+                                "end": s.end,
+                                "text": seg_text,
+                                "confidence": 0.95,
+                                "speaker": speaker_hint
+                            })
+                    return results
+                finally:
+                    try:
+                        if os.path.exists(tmp_path):
+                            os.remove(tmp_path)
+                    except Exception:
+                        pass
+            except Exception as e:
+                logger.error(f"Whisper transcription failed: {e}")
+                return []
+
+        return await asyncio.to_thread(_sync_transcribe_bytes)
 
 transcription_provider = LocalWhisperTranscriptionProvider()
