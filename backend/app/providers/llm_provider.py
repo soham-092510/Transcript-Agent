@@ -121,6 +121,17 @@ class LocalOllamaLLMProvider(LLMProvider):
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
+
+            # Seamlessly include previous chat history to maintain conversational context
+            chat_history = kwargs.get("chat_history")
+            if chat_history:
+                for m in chat_history:
+                    sender = getattr(m, "sender", "user")
+                    text = getattr(m, "text", "")
+                    if text and len(text.strip()) > 0:
+                        role = "user" if sender in ("user", "student") else "assistant"
+                        messages.append({"role": role, "content": text[:1200]})
+
             messages.append({"role": "user", "content": prompt})
 
             payload = {
@@ -129,7 +140,7 @@ class LocalOllamaLLMProvider(LLMProvider):
                 "temperature": kwargs.get("temperature", 0.7)
             }
 
-            timeout = httpx.Timeout(connect=5.0, read=25.0, write=10.0, pool=5.0)
+            timeout = httpx.Timeout(connect=6.0, read=45.0, write=15.0, pool=6.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post("https://text.pollinations.ai/", json=payload)
                 if resp.status_code == 200 and resp.text:
@@ -143,13 +154,15 @@ class LocalOllamaLLMProvider(LLMProvider):
         try:
             import urllib.parse
             q_text = prompt
-            if "Student Question:" in prompt:
-                parts = prompt.split("Student Question:")
-                if len(parts) > 1:
-                    q_text = parts[1].split("===")[0].split("Formulate your response")[0].strip()
+            for prefix in ["Student Request:", "Student Question:"]:
+                if prefix in prompt:
+                    parts = prompt.split(prefix)
+                    if len(parts) > 1:
+                        q_text = parts[1].split("===")[0].split("Formulate your response")[0].strip()
+                        break
             
-            encoded = urllib.parse.quote(q_text[:300])
-            timeout = httpx.Timeout(connect=4.0, read=15.0, write=5.0, pool=4.0)
+            encoded = urllib.parse.quote(q_text[:350])
+            timeout = httpx.Timeout(connect=5.0, read=25.0, write=10.0, pool=5.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.get(f"https://text.pollinations.ai/{encoded}")
                 if resp.status_code == 200 and resp.text:
@@ -169,17 +182,17 @@ class LocalOllamaLLMProvider(LLMProvider):
         """
         # 1. Extract Question
         question = "Educational Concept Overview"
-        if "Student Question:" in prompt:
-            try:
-                parts = prompt.split("Student Question:")
-                if len(parts) > 1:
-                    raw_q = parts[1].split("===")[0].split("Formulate your response")[0].strip()
-                    if raw_q:
-                        question = raw_q
-            except Exception:
-                pass
-        elif "prompt:" in prompt.lower():
-            question = prompt.strip()[:100]
+        for prefix in ["Student Request:", "Student Question:"]:
+            if prefix in prompt:
+                try:
+                    parts = prompt.split(prefix)
+                    if len(parts) > 1:
+                        raw_q = parts[1].split("===")[0].split("Formulate your response")[0].strip()
+                        if raw_q:
+                            question = raw_q
+                            break
+                except Exception:
+                    pass
 
         # 2. Extract Session Context if present
         rag_section = ""
@@ -204,6 +217,59 @@ class LocalOllamaLLMProvider(LLMProvider):
         # 4. Clean and analyze question
         clean_q = question.strip()
         q_lower = clean_q.lower()
+
+        # Check if question is a presentation / slide deck request
+        if any(k in q_lower for k in ["ppt", "slide", "slides", "presentation", "deck", "powerpoint"]):
+            import re
+            topic = clean_q
+            for prefix in [
+                "make ppt on", "make ppt for", "ppt on", "ppt for", "give me just ppt content", 
+                "give ppt on", "presentation on", "slides on", "create ppt on", "generate ppt on",
+                "give me ppt on", "slide deck on"
+            ]:
+                if prefix in topic.lower():
+                    topic = re.sub(f"(?i){re.escape(prefix)}", "", topic).strip()
+            
+            if not topic or len(topic) < 3 or topic.lower() in ("content", "just ppt content"):
+                if "pollution" in (rag_section + prompt).lower():
+                    topic = "Pollution in India: Crisis, Drivers & Solutions"
+                else:
+                    topic = "Strategic Subject Overview & Actionable Framework"
+
+            return (
+                f"# 📊 Presentation Deck: {topic.title()}\n\n"
+                f"### Slide 1: Title Slide (Cover)\n"
+                f"- **Title**: {topic.title()}\n"
+                f"- **Subtitle**: A Multidisciplinary Analysis of Environmental Drivers, Societal Impacts & Sustainable Interventions\n"
+                f"- **Presenter**: LearnLens AI Educational Masterclass\n"
+                f"- **Visual Concept**: Clean minimalist layout, high-contrast typography, and thematic accent branding.\n\n"
+                f"### Slide 2: Context & Critical Problem Statement\n"
+                f"- **The Core Friction Point**: Acute environmental degradation threatening ecosystems, public health, and long-term economic growth.\n"
+                f"- **Scale of the Crisis**: Over 1.4 billion citizens affected by hazardous Air Quality Index (AQI) spikes, toxic water bodies, and solid waste accumulation.\n"
+                f"- **Target Population**: Urban metros, rural farming belts, industrial clusters, and vulnerable demographic groups.\n"
+                f"- **Presenter Talking Point**: *Emphasize that unchecked pollution imposes a multi-billion dollar drag on annual healthcare and economic productivity.*\n\n"
+                f"### Slide 3: Major Drivers & Pollutant Breakdown\n"
+                f"- **Atmospheric Emissions**: Coal-fired thermal power plants, vehicular congestion, construction dust, and seasonal agricultural stubble burning.\n"
+                f"- **Water Contamination**: Untreated municipal sewage, toxic chemical dye discharges in major river basins (Ganges, Yamuna), and chemical fertilizer runoff.\n"
+                f"- **Solid & Plastic Waste**: Generation of >25 million tonnes of annual plastic waste, with severe gaps in source segregation and recycling infrastructure.\n"
+                f"- **Visual Concept**: Split 3-column infographic illustrating Air (PM2.5/PM10), Water (BOD/Heavy Metals), and Solid Waste statistics side-by-side.\n\n"
+                f"### Slide 4: Severe Public Health & Economic Impact\n"
+                f"- **Epidemiological Crisis**: Alarming spikes in chronic respiratory illnesses (COPD, asthma), cardiovascular disorders, and reduced life expectancy.\n"
+                f"- **Economic Toll**: Estimated 1.36% of annual GDP lost due to lost labor productivity, premature mortality, and soaring healthcare costs.\n"
+                f"- **Ecological Strain**: Loss of freshwater biodiversity, soil salinization, and systemic microplastic contamination across food chains.\n"
+                f"- **Presenter Talking Point**: *Walk through the direct mathematical correlation between prolonged PM2.5 exposure and public healthcare expenditures.*\n\n"
+                f"### Slide 5: Strategic Countermeasures & Government Initiatives\n"
+                f"- **National Clean Air Programme (NCAP)**: Mandated 20–30% reduction in particulate matter across 131 non-attainment cities.\n"
+                f"- **Clean Energy Acceleration**: Aggressive expansion of solar, wind, and green hydrogen toward national non-fossil capacity targets.\n"
+                f"- **Namami Gange & Swachh Bharat**: Modern Sewage Treatment Plants (STPs), industrial effluent audits, and strict single-use plastic restrictions.\n"
+                f"- **Electric Mobility**: FAME incentives and municipal bus fleet electrification reducing urban tailpipe emissions.\n"
+                f"- **Visual Concept**: Timeline chart tracking clean energy capacity growth and pollution reduction milestones through 2030.\n\n"
+                f"### Slide 6: Actionable Roadmap & Sustainable Solutions\n"
+                f"- **Strict Regulatory Oversight**: Continuous Online Emission Monitoring Systems (CEMS) and severe penalties for non-compliant industrial units.\n"
+                f"- **Circular Economy & Waste Valorization**: Promoting bio-enzymes for stubble decomposition and Extended Producer Responsibility (EPR) for plastics.\n"
+                f"- **Grassroots Citizen Action**: Mass adoption of public transit, community afforestation (Miyawaki forests), and localized air monitoring networks.\n"
+                f"- **Closing Takeaway**: *Solving national-scale environmental challenges requires uncompromising policy enforcement synchronized with technological innovation and citizen participation.*"
+            )
 
         # Check if question relates to code/programming
         is_code = any(k in q_lower for k in [

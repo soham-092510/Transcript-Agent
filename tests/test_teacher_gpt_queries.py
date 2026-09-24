@@ -23,3 +23,17 @@ def test_teacher_answers_coding_quicksort():
     assert msg.text
     text_lower = msg.text.lower()
     assert "quicksort" in text_lower or "def " in text_lower or "sort" in text_lower
+
+def test_teacher_generates_ppt_presentation_deck():
+    session_id = "demo_cybersecurity_module_2"
+    query = "make ppt on pollution in india"
+    msg = asyncio.run(teacher_service.teach(session_id, query, TeacherMode.SIMPLE))
+    assert msg is not None
+    assert msg.text
+    text_lower = msg.text.lower()
+    # Must provide real slide content, not generic placeholders
+    assert "slide" in text_lower
+    assert "pollution" in text_lower
+    assert "india" in text_lower
+    # Evidence must be 0 for outside topic
+    assert len(msg.evidence) == 0

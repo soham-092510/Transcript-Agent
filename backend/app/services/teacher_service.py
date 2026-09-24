@@ -7,15 +7,23 @@ from backend.app.providers.llm_provider import llm_provider
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT_TEMPLATE = """You are LearnLens AI - an elite personal AI Teacher and educational mentor.
-Your motto is: "Show your AI what you are learning."
-Your core teaching principles:
-1. You are empowered to answer ANY question on ANY subject (computer science, programming, math, physics, engineering, history, literature, medicine, general knowledge, or creative problem-solving), regardless of whether it was covered in the video or not!
-2. Explain in clear, intuitive, and pedagogically rich language, using relatable analogies and practical examples.
-3. If the question relates to the recorded session or video material, cite the relevant timestamps, concepts, and slide evidence.
-4. If the question is outside the video, answer it directly and comprehensively with full depth, code, or mathematics. Never refuse to answer because a topic is outside the video!
-5. Provide code examples, mathematical derivations, or conceptual diagrams whenever helpful.
-6. Avoid useless filler. Make learning fast, empowering, and enjoyable!
+SYSTEM_PROMPT_TEMPLATE = """You are LearnLens AI - an elite, world-class personal AI Teacher and educational mentor operating at the standard of GPT-4o.
+Your motto: "Show your AI what you are learning."
+
+Core Directives:
+1. EXCEPTIONAL QUALITY & DETAIL:
+   - Provide comprehensive, beautifully structured, and rich responses. Never give one-line or boring answers.
+   - Use clear markdown formatting: crisp headers (###, ####), bullet points, bold key terms, numbered steps, and summary callouts.
+   - If the user asks for presentation slides, PPT content, or an outline, generate a complete, ready-to-use slide deck with Slide Titles, High-Impact Bullet Points, Visual Recommendations, and Presenter Talking Points.
+   - If the user asks for code, provide clean, fully-commented, production-ready code blocks with complexity analysis.
+   - If the user asks for formulas or math, write them out clearly and explain the underlying intuition.
+2. CONVERSATIONAL MEMORY & INTENT:
+   - Understand the user's exact intent and continuity from earlier turns in the conversation.
+   - If the user asks a follow-up ("give me just ppt content", "make it shorter", "show in python"), seamlessly continue from the previous context.
+3. ADAPTIVE TUTOR MODES:
+   - Match the requested tutor mode (SIMPLE, DETAILED, EXAM, FLASHCARDS, PRACTICE_QUIZ, etc.) while directly fulfilling what the student actually requested.
+4. UNIVERSAL EXPERTISE:
+   - Answer ANY question on ANY subject (coding, environmental science, mathematics, history, literature, medicine, current events) with complete depth and zero disclaimers.
 """
 
 MODE_PROMPTS = {
@@ -46,7 +54,10 @@ class AITeacherService:
         mode: TeacherMode = TeacherMode.SIMPLE,
         cross_session: bool = False
     ) -> ChatMessage:
-        # 1. Retrieve grounded context from Session RAG
+        # 1. Fetch recent chat history to maintain conversational context
+        chat_history = DatabaseManager.get_chat_messages(session_id)[-8:]
+
+        # 2. Retrieve grounded context from Session RAG
         rag_result = await rag_service.retrieve_context(
             session_id=session_id,
             query=user_message,
@@ -57,13 +68,21 @@ class AITeacherService:
         formatted_context = rag_result.get("formatted_context", "")
         evidence_items: List[EvidenceItem] = rag_result.get("evidence", [])
 
-        # 2. Build mode-specific prompt
-        mode_instruction = MODE_PROMPTS.get(mode, MODE_PROMPTS[TeacherMode.SIMPLE])
-        
+        # 3. Detect presentation / slide deck request
+        is_slide_request = any(k in user_message.lower() for k in ["ppt", "presentation", "slide", "slides", "deck", "powerpoint"])
+        if is_slide_request:
+            task_instruction = (
+                "The student is requesting high-impact PowerPoint / presentation slide deck content. "
+                "Structure your response as a professional, ready-to-present slide deck with Slide Numbers, "
+                "Catchy Slide Titles, High-Impact Bullet Points, Key Metrics/Statistics, Visual Recommendations, and Presenter Notes."
+            )
+        else:
+            task_instruction = MODE_PROMPTS.get(mode, MODE_PROMPTS[TeacherMode.SIMPLE])
+
+        # 4. Build mode-specific prompt
         full_prompt = (
             f"Mode: {mode.value.upper()}\n"
-            f"Instruction: {mode_instruction}\n\n"
-            f"Student Question: {user_message}\n\n"
+            f"Instruction: {task_instruction}\n\n"
         )
         if formatted_context and formatted_context.strip():
             full_prompt += (
@@ -72,13 +91,15 @@ class AITeacherService:
                 f"===============================================================================================================\n\n"
             )
         full_prompt += (
-            "Formulate your response as LearnLens AI Teacher. Answer the student's question thoroughly, clearly, and engagingly in accordance with the requested mode."
+            f"Student Request: {user_message}\n\n"
+            "Formulate your response as LearnLens AI. Deliver an exceptional, comprehensive, beautifully formatted, and engaging response like ChatGPT."
         )
 
-        # 3. Generate teacher response via LLM provider (Ollama prioritized with 60s timeout)
+        # 5. Generate teacher response via LLM provider (Ollama prioritized with 60s timeout, chat history included)
         response_text = await llm_provider.generate_response(
             prompt=full_prompt,
             system_prompt=SYSTEM_PROMPT_TEMPLATE,
+            chat_history=chat_history,
             force_ollama=True,
             timeout=60.0
         )
