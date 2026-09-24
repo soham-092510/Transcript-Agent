@@ -52,6 +52,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [interimSpeech, setInterimSpeech] = useState<string>('');
 
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -171,9 +172,13 @@ export function App() {
         }
       },
       onTranscriptChunk: (text, sec, speaker) => {
+        setInterimSpeech('');
         if (audioEnabled && wsClientRef.current) {
           wsClientRef.current.sendTranscriptChunk(text, sec, speaker || 'Speaker');
         }
+      },
+      onInterimTranscript: (text, sec, speaker) => {
+        setInterimSpeech(text);
       },
       onAudioChunk: (b64Audio, sec, speaker) => {
         if (audioEnabled && wsClientRef.current) {
@@ -181,6 +186,7 @@ export function App() {
         }
       },
       onStopped: () => {
+        setInterimSpeech('');
         setIsCapturing(false);
       }
     });
@@ -509,6 +515,7 @@ export function App() {
                 onOpenAutoPilotModal={() => setAutoModalOpen(true)}
                 recentFrames={frames}
                 recentSegments={segments}
+                interimTranscript={interimSpeech}
                 onOpenSlidePreview={(fId) => {
                   setSelectedPreviewId(fId);
                   setCurrentTab('slides');

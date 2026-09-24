@@ -1,6 +1,7 @@
 export interface CaptureCallbacks {
   onFrameCaptured: (base64Image: string, timestampSec: number, force?: boolean) => void;
   onTranscriptChunk?: (text: string, timestampSec: number, speaker?: string) => void;
+  onInterimTranscript?: (text: string, timestampSec: number, speaker?: string) => void;
   onAudioChunk?: (base64Audio: string, timestampSec: number, speaker?: string) => void;
   onStopped: () => void;
 }
@@ -200,8 +201,8 @@ export class BrowserMediaCaptureManager {
         }
       };
 
-      // Emit audio chunk every 5 seconds for Whisper transcription
-      this.mediaRecorder.start(5000);
+      // Emit audio chunk every 2.5 seconds for responsive tab audio transcription
+      this.mediaRecorder.start(2500);
     } catch (e) {
       console.warn('Audio streaming setup note:', e);
     }
@@ -214,22 +215,39 @@ export class BrowserMediaCaptureManager {
         this.recognition = new SpeechRec();
         this.recognition.continuous = true;
         this.recognition.interimResults = true;
+        this.recognition.maxAlternatives = 1;
         this.recognition.lang = 'en-US';
 
         this.recognition.onresult = (event: any) => {
+          let interimTranscript = '';
           let finalTranscript = '';
+
           for (let i = event.resultIndex; i < event.results.length; ++i) {
+            const piece = event.results[i][0]?.transcript || '';
             if (event.results[i].isFinal) {
-              finalTranscript += event.results[i][0].transcript;
+              finalTranscript += piece;
+            } else {
+              interimTranscript += piece;
             }
           }
+
+          const timestampSec = (Date.now() - this.startTime) / 1000.0;
+
+          // Emit interim transcript immediately so every single word is visible as spoken
+          if (interimTranscript.trim() && this.callbacks?.onInterimTranscript) {
+            this.callbacks.onInterimTranscript(interimTranscript.trim(), timestampSec, 'Speaker');
+          }
+
+          // Emit final transcript when phrase is completed
           if (finalTranscript.trim() && this.callbacks?.onTranscriptChunk) {
-            const timestampSec = (Date.now() - this.startTime) / 1000.0;
             this.callbacks.onTranscriptChunk(finalTranscript.trim(), timestampSec, 'Speaker');
           }
         };
 
         this.recognition.onerror = (e: any) => {
+          if (e.error === 'no-speech') {
+            return; // Normal pause in conversation
+          }
           if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
             this.speechDenied = true;
           }

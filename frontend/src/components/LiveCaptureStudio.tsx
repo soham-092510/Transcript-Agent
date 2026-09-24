@@ -33,6 +33,7 @@ interface LiveCaptureStudioProps {
   onOpenAutoPilotModal?: () => void;
   recentFrames: FrameCapture[];
   recentSegments: TranscriptSegment[];
+  interimTranscript?: string;
   onOpenSlidePreview: (frameId: string) => void;
 }
 
@@ -47,6 +48,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
   onOpenAutoPilotModal,
   recentFrames,
   recentSegments,
+  interimTranscript = '',
   onOpenSlidePreview,
 }) => {
   const [copiedSpeed, setCopiedSpeed] = useState<string | null>(null);
@@ -67,12 +69,12 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
     }
   }, [isCapturing]);
 
-  // Auto-scroll transcript when new segments arrive
+  // Auto-scroll transcript when new segments or live interim words arrive
   useEffect(() => {
     if (autoScroll && transcriptEndRef.current) {
       transcriptEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [recentSegments, autoScroll]);
+  }, [recentSegments, interimTranscript, autoScroll]);
 
   const handleTriggerForceCapture = () => {
     if (onForceCapture) {
@@ -374,7 +376,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-2.5 pr-1">
-            {recentSegments.length === 0 ? (
+            {recentSegments.length === 0 && !interimTranscript ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-4 text-slate-500 text-xs space-y-2">
                 <Clock className="w-8 h-8 stroke-1 text-slate-400" />
                 <p className="font-medium text-slate-700">Awaiting speech audio stream...</p>
@@ -384,30 +386,49 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
                   <p>• Both the meeting speaker and your microphone will be transcribed with zero latency!</p>
                 </div>
               </div>
-            ) : filteredSegments.length === 0 ? (
+            ) : filteredSegments.length === 0 && !interimTranscript ? (
               <div className="h-full flex items-center justify-center text-xs text-slate-400 italic">
                 No transcript segments matching "{transcriptSearch}"
               </div>
             ) : (
-              filteredSegments.map((seg) => {
-                const isStudent = seg.speaker?.toLowerCase().includes('you') || seg.speaker?.toLowerCase().includes('student');
-                return (
-                  <div key={seg.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
-                    <div className="flex items-center justify-between text-[10px]">
-                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
-                        isStudent 
-                          ? 'bg-purple-100 text-purple-700 border border-purple-200' 
-                          : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                      }`}>
-                        <User className="w-2.5 h-2.5" />
-                        {seg.speaker || 'Instructor'}
-                      </span>
-                      <span className="font-mono text-slate-400">[{seg.timestamp_formatted}]</span>
+              <>
+                {filteredSegments.map((seg) => {
+                  const isStudent = seg.speaker?.toLowerCase().includes('you') || seg.speaker?.toLowerCase().includes('student');
+                  return (
+                    <div key={seg.id} className="p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs space-y-1">
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold ${
+                          isStudent 
+                            ? 'bg-purple-100 text-purple-700 border border-purple-200' 
+                            : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }`}>
+                          <User className="w-2.5 h-2.5" />
+                          {seg.speaker || 'Instructor'}
+                        </span>
+                        <span className="font-mono text-slate-400">[{seg.timestamp_formatted}]</span>
+                      </div>
+                      <p className="text-slate-800 leading-relaxed font-normal pt-0.5">{seg.text}</p>
                     </div>
-                    <p className="text-slate-800 leading-relaxed font-normal pt-0.5">{seg.text}</p>
+                  );
+                })}
+
+                {/* Real-time word-by-word interim ticker */}
+                {interimTranscript && (
+                  <div className="p-2.5 rounded-lg bg-emerald-50/90 border border-emerald-300 text-xs space-y-1 shadow-sm transition-all">
+                    <div className="flex items-center justify-between text-[10px]">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold bg-emerald-600 text-white animate-pulse">
+                        <Mic className="w-2.5 h-2.5" />
+                        Live Word Stream
+                      </span>
+                      <span className="font-mono text-emerald-700 font-semibold text-[10px] animate-pulse">● Speaking now</span>
+                    </div>
+                    <p className="text-emerald-950 font-medium leading-relaxed pt-0.5">
+                      {interimTranscript}
+                      <span className="inline-block w-1.5 h-3 ml-1 bg-emerald-600 animate-ping align-middle" />
+                    </p>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
             <div ref={transcriptEndRef} />
           </div>
