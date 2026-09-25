@@ -29,8 +29,10 @@ import {
   TeacherMode 
 } from './types';
 
+import { ModernStudioLayout } from './components/ModernStudioLayout';
+
 export function App() {
-  const [currentTab, setCurrentTab] = useState('chat');
+  const [currentTab, setCurrentTab] = useState('live');
   const [sessions, setSessions] = useState<LearningSession[]>([]);
   const [activeSession, setActiveSession] = useState<LearningSession | null>(null);
 
@@ -504,22 +506,27 @@ export function App() {
             )}
 
             {currentTab === 'live' && (
-              <LiveCaptureStudio
+              <ModernStudioLayout
                 session={activeSession}
                 isCapturing={isCapturing}
                 onStartCapture={handleStartObservationForActive}
                 onStopCapture={handleStopCapture}
                 onForceCapture={handleForceCapture}
-                onInstantSlidePdf={handleInstantSlidePdf}
-                onFinishAndTeach={handleFinishAndTeach}
-                onOpenAutoPilotModal={() => setAutoModalOpen(true)}
                 recentFrames={frames}
                 recentSegments={segments}
                 interimTranscript={interimSpeech}
+                concepts={concepts}
+                chatMessages={chatMessages}
+                isChatLoading={isChatLoading}
+                onSendMessage={handleSendMessage}
                 onOpenSlidePreview={(fId) => {
                   setSelectedPreviewId(fId);
                   setCurrentTab('slides');
                 }}
+                onNavigateTab={setCurrentTab}
+                onGeneratePPT={handleGeneratePPT}
+                onGeneratePDF={handleGeneratePDF}
+                onTakeQuiz={() => setCurrentTab('quiz')}
               />
             )}
 

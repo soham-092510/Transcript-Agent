@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Pause, 
   Play, 
   Square, 
-  Terminal, 
-  Eye, 
-  Mic, 
-  Sparkles,
-  Zap,
+  Check, 
+  Video, 
+  User, 
+  Radio
 } from 'lucide-react';
 import { LearningSession } from '../types';
 
@@ -16,8 +15,8 @@ interface HumanControlBarProps {
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
-  onSendCommand: (cmd: string) => void;
-  onOpenAutoPilot: () => void;
+  onSendCommand?: (cmd: string) => void;
+  onOpenAutoPilot?: () => void;
   visualEnabled: boolean;
   setVisualEnabled: (val: boolean) => void;
   audioEnabled: boolean;
@@ -29,180 +28,118 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
   onPause,
   onResume,
   onStop,
-  onSendCommand,
-  onOpenAutoPilot,
   visualEnabled,
-  setVisualEnabled,
   audioEnabled,
-  setAudioEnabled,
 }) => {
-  const [showCommandInput, setShowCommandInput] = useState(false);
-  const [commandText, setCommandText] = useState('');
-
-  if (!activeSession) {
-    return (
-      <header className="h-14 border-b border-slate-200 bg-white px-6 flex items-center justify-between text-xs text-slate-500 shadow-sm">
-        <span>No active learning session selected. Click "Start Learning" or launch the Auto Feature.</span>
-        <button
-          onClick={onOpenAutoPilot}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-extrabold shadow-md shadow-amber-500/20 transition-all active:scale-95 cursor-pointer ml-auto"
-        >
-          <Zap className="w-3.5 h-3.5 fill-current" />
-          <span>⚡ AUTO FEATURE</span>
-        </button>
-      </header>
-    );
-  }
-
-  const isPaused = activeSession.status === 'PAUSED';
-
-  const handleCommandSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (commandText.trim()) {
-      onSendCommand(commandText.trim());
-      setCommandText('');
-      setShowCommandInput(false);
-    }
-  };
+  const isPaused = activeSession?.status === 'PAUSED';
 
   return (
-    <header className="h-16 border-b border-slate-200 bg-white/95 backdrop-blur px-6 flex items-center justify-between z-20 shadow-sm">
-      {/* Session Title & Platform Pill */}
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-2">
-            <h2 className="font-bold text-sm text-slate-900 truncate max-w-md">
-              {activeSession.title}
-            </h2>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
-              {activeSession.source_platform}
-            </span>
+    <header className="h-16 bg-white border-b border-slate-200/80 px-5 flex items-center justify-between z-20 shrink-0 shadow-2xs select-none">
+      
+      {/* LEFT: BRAND LOGO & TAGLINE MATCHING REFERENCE */}
+      <div className="flex items-center gap-6">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm shadow-blue-500/20 text-white">
+            <Video className="w-4 h-4 fill-white" />
           </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <h1 className="font-bold text-sm text-slate-900 tracking-tight">
+                LearnLens AI
+              </h1>
+            </div>
+            <p className="text-[10px] text-slate-400 font-medium">
+              Watch • Listen • Learn • Grow
+            </p>
+          </div>
+        </div>
 
-          {/* Multimodal Pipeline Status Dots */}
-          <div className="flex items-center gap-3 text-[11px] text-slate-500 mt-0.5">
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Connected
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className={`w-1.5 h-1.5 rounded-full ${audioEnabled ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-              Listening
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className={`w-1.5 h-1.5 rounded-full ${visualEnabled ? 'bg-accent-cyan' : 'bg-slate-300'}`} />
-              Visual Analysis
-            </span>
-            <span className="flex items-center gap-1 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-500" />
-              Knowledge Live
+        {/* Vertical divider */}
+        <div className="h-7 w-[1px] bg-slate-200 hidden md:block" />
+
+        {/* CENTER-LEFT: ACTIVE SESSION TITLE & SOURCE PILL */}
+        <div className="hidden md:flex flex-col">
+          <h2 className="text-xs font-bold text-slate-900 truncate max-w-sm">
+            {activeSession ? activeSession.title : 'Advanced Network Security (TLS 1.3)'}
+          </h2>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold text-slate-500">
+              <svg className="w-3.5 h-3.5 fill-red-600" viewBox="0 0 24 24">
+                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+              </svg>
+              <span>YouTube • Chrome Tab</span>
             </span>
           </div>
         </div>
       </div>
 
-      {/* Prominent Human Control Buttons */}
-      <div className="flex items-center gap-2.5">
-        {/* Toggle Visual & Audio Processing */}
-        <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 mr-2 text-xs">
-          <button
-            onClick={() => setVisualEnabled(!visualEnabled)}
-            title={visualEnabled ? 'Disable Visual Analysis' : 'Enable Visual Analysis'}
-            className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-semibold transition-colors ${
-              visualEnabled ? 'bg-white text-accent-cyan shadow-sm' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Vision
-          </button>
-          <button
-            onClick={() => setAudioEnabled(!audioEnabled)}
-            title={audioEnabled ? 'Disable Audio Processing' : 'Enable Audio Processing'}
-            className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-semibold transition-colors ${
-              audioEnabled ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'
-            }`}
-          >
-            <Mic className="w-3.5 h-3.5" />
-            Audio
-          </button>
+      {/* CENTER-RIGHT & RIGHT CONTROLS */}
+      <div className="flex items-center gap-5">
+        
+        {/* Observational Status Indicator & Telemetry Checks */}
+        <div className="flex items-center gap-4 text-xs font-medium">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider">
+              {isPaused ? 'PAUSED' : 'OBSERVING'}
+            </span>
+            <span className="text-[11px] font-mono text-slate-500 ml-0.5">
+              04:18
+            </span>
+          </div>
+
+          <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-500">
+            <span className="flex items-center gap-1 text-slate-700 font-medium">
+              <span>Audio</span>
+              <Check className="w-3 h-3 text-slate-800 stroke-[2.5]" />
+            </span>
+            <span className="flex items-center gap-1 text-slate-700 font-medium">
+              <span>Vision</span>
+              <Check className="w-3 h-3 text-slate-800 stroke-[2.5]" />
+            </span>
+            <span className="flex items-center gap-1 text-slate-700 font-medium">
+              <span>RAG</span>
+              <Check className="w-3 h-3 text-slate-800 stroke-[2.5]" />
+            </span>
+          </div>
         </div>
 
-        {/* PAUSE / RESUME */}
-        {isPaused ? (
-          <button
-            onClick={onResume}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all active:scale-95"
-          >
-            <Play className="w-3.5 h-3.5 fill-white" />
-            RESUME AGENT
-          </button>
-        ) : (
-          <button
-            onClick={onPause}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all active:scale-95 shadow-sm"
-          >
-            <Pause className="w-3.5 h-3.5" />
-            PAUSE AGENT
-          </button>
-        )}
-
-        {/* STOP */}
-        <button
-          onClick={onStop}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-300 text-xs font-bold transition-all active:scale-95 shadow-sm"
-        >
-          <Square className="w-3 h-3 fill-red-600" />
-          STOP
-        </button>
-
-        {/* NEW COMMAND */}
-        <button
-          onClick={() => setShowCommandInput(!showCommandInput)}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition-all active:scale-95"
-        >
-          <Terminal className="w-3.5 h-3.5" />
-          COMMAND
-        </button>
-
-        {/* ⚡ AUTO FEATURE (Upper Rightmost Corner) */}
-        <button
-          onClick={onOpenAutoPilot}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-extrabold shadow-md shadow-amber-500/25 transition-all active:scale-95 cursor-pointer ml-1"
-          title="Auto Feature: Ingest 11-hour / 100-video courses in 10-15 minutes, hands-free auto-next, and video-size slide PDF/PPTX"
-        >
-          <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
-          <span>⚡ AUTO FEATURE</span>
-        </button>
-      </div>
-
-      {/* Inline Command Floating Input Modal */}
-      {showCommandInput && (
-        <div className="absolute right-6 top-16 w-96 bg-white border border-slate-200 rounded-2xl p-4 shadow-2xl z-30 animate-in fade-in zoom-in-95 duration-150">
-          <p className="text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand-600" />
-            Natural Language Agent Command
-          </p>
-          <p className="text-[11px] text-slate-500 mb-3">
-            Examples: "Generate PPT", "Explain what I just learned", "Make notes", "Create flashcards"
-          </p>
-          <form onSubmit={handleCommandSubmit} className="flex gap-2">
-            <input
-              type="text"
-              autoFocus
-              placeholder="Type your command..."
-              value={commandText}
-              onChange={(e) => setCommandText(e.target.value)}
-              className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-brand-500"
-            />
+        {/* Action Buttons: Pause & Stop */}
+        <div className="flex items-center gap-2">
+          {isPaused ? (
             <button
-              type="submit"
-              className="px-3.5 py-1.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-sm"
+              onClick={onResume}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
             >
-              Execute
+              <Play className="w-3 h-3 fill-current text-slate-700" />
+              <span>Resume</span>
             </button>
-          </form>
+          ) : (
+            <button
+              onClick={onPause}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+            >
+              <Pause className="w-3 h-3 text-slate-700" />
+              <span>Pause</span>
+            </button>
+          )}
+
+          <button
+            onClick={onStop}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold shadow-sm shadow-red-500/20 transition-all cursor-pointer"
+          >
+            <Square className="w-3 h-3 fill-current" />
+            <span>Stop</span>
+          </button>
         </div>
-      )}
+
+        {/* User Profile Avatar matching reference image */}
+        <div className="flex items-center pl-1 border-l border-slate-200">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center font-bold text-xs shadow-xs border border-white overflow-hidden">
+            <span className="text-sm">🧔</span>
+          </div>
+        </div>
+      </div>
     </header>
   );
 };

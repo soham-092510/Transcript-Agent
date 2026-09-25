@@ -1,21 +1,20 @@
 import React from 'react';
 import { 
-  GraduationCap, 
-  Play, 
-  MessageSquare, 
-  LayoutDashboard, 
+  Home, 
   Radio, 
+  GraduationCap, 
   FileText, 
   Layers, 
-  Presentation, 
-  HelpCircle, 
-  UserCheck, 
-  Upload, 
+  Lightbulb, 
+  Target, 
+  Package, 
+  Plus, 
   Sparkles, 
-  Pin, 
   Trash2, 
-  Search,
+  ChevronRight, 
   Settings,
+  Search,
+  CheckCircle2
 } from 'lucide-react';
 import { LearningSession, SystemStatus } from '../types';
 
@@ -52,249 +51,186 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setSearchQuery,
   onOpenSettings,
 }) => {
-  const pinnedSessions = sessions.filter(s => s.is_pinned);
-  const recentSessions = sessions.filter(s => !s.is_pinned);
+  // Recent sessions fallback items if empty for pixel-perfect initial preview
+  const displayRecent = sessions.length > 0 ? sessions : [
+    { id: 'demo1', title: 'TLS 1.3', source_platform: 'YouTube' } as any,
+    { id: 'demo2', title: 'Neural Networks', source_platform: 'Coursera' } as any,
+    { id: 'demo3', title: 'Python Basics', source_platform: 'Udemy' } as any,
+    { id: 'demo4', title: 'Machine Learning', source_platform: 'YouTube' } as any,
+    { id: 'demo5', title: 'Cyber Security', source_platform: 'Chrome Tab' } as any
+  ];
 
   return (
-    <aside className="w-72 bg-white border-r border-slate-200 flex flex-col h-screen select-none shadow-sm">
-      {/* Brand Header */}
-      <div className="p-4 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-brand-600 to-emerald-500 flex items-center justify-center shadow-md shadow-brand-500/20">
-            <GraduationCap className="w-5 h-5 text-white" />
-          </div>
-          <div>
-            <h1 className="font-bold text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
-              LearnLens <span className="text-xs px-1.5 py-0.5 rounded bg-brand-100 text-brand-700 font-mono font-bold">AI</span>
-            </h1>
-            <p className="text-[11px] text-slate-500">Show your AI what you learn</p>
-          </div>
-        </div>
-
-        {/* Primary Action Button */}
+    <aside className="w-56 bg-white border-r border-slate-200/80 flex flex-col h-screen select-none shrink-0 z-30 shadow-xs">
+      
+      {/* Top "+ New Workspace" Action Button */}
+      <div className="p-3.5 pb-2">
         <button
           onClick={onStartLearning}
-          className="mt-4 w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-emerald-600 hover:from-brand-700 hover:to-emerald-700 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-md shadow-brand-600/25 transition-all transform active:scale-[0.98]"
+          className="w-full py-2 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all transform active:scale-95 cursor-pointer"
         >
-          <Play className="w-4 h-4 fill-white" />
-          Start Learning
+          <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+          <span>New Workspace</span>
         </button>
-
-        {/* Quick Tools Row */}
-        <div className="grid grid-cols-3 gap-1.5 mt-2">
-          <button
-            onClick={onLoadDemo}
-            title="Load Pre-configured Demo Lesson"
-            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-200 transition-colors"
-          >
-            <Sparkles className="w-3 h-3 text-amber-500" />
-            Demo
-          </button>
-          <button
-            onClick={onOpenVideoImport}
-            title="Upload local video (MP4, MKV, WebM)"
-            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-200 transition-colors"
-          >
-            <Upload className="w-3 h-3 text-accent-cyan" />
-            Video
-          </button>
-          <button
-            onClick={onOpenQuizImport}
-            title="Import Quiz PDF"
-            className="py-1.5 px-2 rounded-lg bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-medium flex items-center justify-center gap-1 border border-slate-200 transition-colors"
-          >
-            <HelpCircle className="w-3 h-3 text-accent-violet" />
-            Quiz PDF
-          </button>
-        </div>
       </div>
 
-      {/* Global Search Box */}
-      <div className="px-3 pt-3">
-        <div className="relative">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search learning history..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:bg-white focus:border-brand-500 transition-colors"
+      {/* Main Navigation Workspace Items */}
+      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4 scrollbar-none">
+        
+        {/* WORKSPACE SECTION */}
+        <div className="space-y-1">
+          <p className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            WORKSPACE
+          </p>
+          
+          <SidebarNavItem
+            icon={<Home className="w-3.5 h-3.5" />}
+            label="Overview"
+            active={currentTab === 'dashboard'}
+            onClick={() => setCurrentTab('dashboard')}
+          />
+          <SidebarNavItem
+            icon={<Radio className="w-3.5 h-3.5" />}
+            label="Live"
+            active={currentTab === 'live'}
+            onClick={() => setCurrentTab('live')}
+            isLiveDot={true}
+          />
+          <SidebarNavItem
+            icon={<GraduationCap className="w-3.5 h-3.5" />}
+            label="Teacher"
+            active={currentTab === 'chat'}
+            onClick={() => setCurrentTab('chat')}
+          />
+          <SidebarNavItem
+            icon={<FileText className="w-3.5 h-3.5" />}
+            label="Transcript"
+            active={currentTab === 'transcript'}
+            onClick={() => setCurrentTab('transcript')}
+          />
+          <SidebarNavItem
+            icon={<Layers className="w-3.5 h-3.5" />}
+            label="Slides"
+            active={currentTab === 'slides'}
+            onClick={() => setCurrentTab('slides')}
+          />
+          <SidebarNavItem
+            icon={<Lightbulb className="w-3.5 h-3.5" />}
+            label="Knowledge"
+            active={currentTab === 'learner'}
+            onClick={() => setCurrentTab('learner')}
+          />
+          <SidebarNavItem
+            icon={<Target className="w-3.5 h-3.5" />}
+            label="Practice"
+            active={currentTab === 'quiz'}
+            onClick={() => setCurrentTab('quiz')}
+          />
+          <SidebarNavItem
+            icon={<Package className="w-3.5 h-3.5" />}
+            label="Artifacts"
+            active={currentTab === 'artifacts'}
+            onClick={() => setCurrentTab('artifacts')}
           />
         </div>
+
+        {/* RECENT SECTION */}
+        <div className="space-y-1 pt-2 border-t border-slate-100">
+          <p className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+            RECENT
+          </p>
+
+          <div className="space-y-0.5">
+            {displayRecent.slice(0, 5).map((sess, idx) => {
+              const isSelected = activeSession?.id === sess.id || (idx === 0 && !activeSession);
+              return (
+                <div
+                  key={sess.id || idx}
+                  onClick={() => onSelectSession(sess)}
+                  className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
+                    isSelected
+                      ? 'bg-blue-50/70 text-blue-700 font-semibold'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0 pr-1">
+                    <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <span className="truncate text-[11px]">{sess.title}</span>
+                  </div>
+                  {sess.id !== 'demo1' && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteSession(sess.id);
+                      }}
+                      title="Delete"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-500 transition-opacity"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
-      {/* Navigation Sections */}
-      <div className="px-3 py-2 space-y-0.5 border-b border-slate-100">
-        <NavItem
-          icon={<MessageSquare className="w-4 h-4 text-emerald-600" />}
-          label="AI Teacher Chat"
-          active={currentTab === 'chat'}
-          onClick={() => setCurrentTab('chat')}
-        />
-        <NavItem
-          icon={<LayoutDashboard className="w-4 h-4 text-accent-cyan" />}
-          label="Session Dashboard"
-          active={currentTab === 'dashboard'}
-          onClick={() => setCurrentTab('dashboard')}
-        />
-        <NavItem
-          icon={<Radio className="w-4 h-4 text-red-500" />}
-          label="Live Capture Studio"
-          active={currentTab === 'live'}
-          onClick={() => setCurrentTab('live')}
-        />
-        <NavItem
-          icon={<FileText className="w-4 h-4 text-amber-600" />}
-          label="Transcript & Visuals"
-          active={currentTab === 'transcript'}
-          onClick={() => setCurrentTab('transcript')}
-        />
-        <NavItem
-          icon={<Layers className="w-4 h-4 text-indigo-600" />}
-          label="Smart Slide Collection"
-          active={currentTab === 'slides'}
-          onClick={() => setCurrentTab('slides')}
-        />
-        <NavItem
-          icon={<Presentation className="w-4 h-4 text-brand-600" />}
-          label="Study Pack & PPT"
-          active={currentTab === 'artifacts'}
-          onClick={() => setCurrentTab('artifacts')}
-        />
-        <NavItem
-          icon={<HelpCircle className="w-4 h-4 text-accent-violet" />}
-          label="Practice & Quiz"
-          active={currentTab === 'quiz'}
-          onClick={() => setCurrentTab('quiz')}
-        />
-        <NavItem
-          icon={<UserCheck className="w-4 h-4 text-blue-600" />}
-          label="Learner Profile & Gaps"
-          active={currentTab === 'learner'}
-          onClick={() => setCurrentTab('learner')}
-        />
-      </div>
+      {/* Bottom Information Cards Matching Reference Image */}
+      <div className="p-3 border-t border-slate-100 space-y-2.5 bg-white shrink-0">
+        {/* Today's Learning Card */}
+        <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+            <span>Today's Learning</span>
+            <span className="text-slate-800 font-mono">3h 42m</span>
+          </div>
+          {/* Soft Blue Progress Bar */}
+          <div className="w-full bg-slate-200/70 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-blue-600 h-full w-[65%] rounded-full" />
+          </div>
+        </div>
 
-      {/* Session History Scroll Area */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-        {/* Pinned Sessions */}
-        {pinnedSessions.length > 0 && (
-          <div>
-            <div className="flex items-center gap-1.5 px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-              <Pin className="w-3 h-3 text-amber-500" />
-              Pinned Sessions
+        {/* Upgrade / Better Learning with AI Card */}
+        <button
+          onClick={onLoadDemo}
+          className="w-full p-2.5 rounded-xl bg-gradient-to-r from-blue-50/60 to-indigo-50/60 border border-blue-200/60 hover:border-blue-300 flex items-center justify-between text-left transition-all group cursor-pointer shadow-2xs"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <div className="space-y-1">
-              {pinnedSessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  session={s}
-                  isActive={activeSession?.id === s.id}
-                  onSelect={() => onSelectSession(s)}
-                  onDelete={() => onDeleteSession(s.id)}
-                />
-              ))}
-            </div>
+            <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+              Better learning with AI
+            </span>
           </div>
-        )}
-
-        {/* Recent Sessions */}
-        <div>
-          <div className="px-2 mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-            Recent Sessions ({recentSessions.length})
-          </div>
-          <div className="space-y-1">
-            {recentSessions.length === 0 ? (
-              <p className="text-xs text-slate-400 px-2 py-1 italic">No recent sessions</p>
-            ) : (
-              recentSessions.map((s) => (
-                <SessionItem
-                  key={s.id}
-                  session={s}
-                  isActive={activeSession?.id === s.id}
-                  onSelect={() => onSelectSession(s)}
-                  onDelete={() => onDeleteSession(s.id)}
-                />
-              ))
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Status Panel */}
-      <div className="p-3 border-t border-slate-100 bg-slate-50 text-[11px] text-slate-600">
-        <div className="flex items-center justify-between mb-1.5">
-          <span className="flex items-center gap-1.5 font-medium">
-            <span className={`w-2 h-2 rounded-full ${systemStatus?.ollama_connected ? 'bg-emerald-500' : 'bg-emerald-500'}`} />
-            <span className="truncate">AI: {systemStatus?.ollama_connected ? 'Ollama Online' : 'Zero-Lag Mode'}</span>
-          </span>
-          {onOpenSettings && (
-            <button
-              onClick={onOpenSettings}
-              title="Open System & AI Settings"
-              className="p-1 rounded-md hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors"
-            >
-              <Settings className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-        <div className="flex items-center justify-between text-[10px] text-slate-400">
-          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold border border-emerald-200">
-            0.0s Lag Shield
-          </span>
-          <span className="font-mono">v1.0.0</span>
-        </div>
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
+        </button>
       </div>
     </aside>
   );
 };
 
-const NavItem: React.FC<{
+const SidebarNavItem: React.FC<{
   icon: React.ReactNode;
   label: string;
   active: boolean;
   onClick: () => void;
-}> = ({ icon, label, active, onClick }) => (
+  isLiveDot?: boolean;
+}> = ({ icon, label, active, onClick, isLiveDot }) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
       active
-        ? 'bg-brand-50 text-brand-700 font-semibold border border-brand-200 shadow-sm'
-        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+        ? 'bg-blue-50 text-blue-600 font-bold'
+        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
     }`}
   >
-    {icon}
-    <span className="truncate">{label}</span>
-  </button>
-);
-
-const SessionItem: React.FC<{
-  session: LearningSession;
-  isActive: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
-}> = ({ session, isActive, onSelect, onDelete }) => (
-  <div
-    className={`group flex items-center justify-between px-2.5 py-2 rounded-lg text-xs cursor-pointer transition-colors ${
-      isActive
-        ? 'bg-brand-50/80 border border-brand-300 text-brand-800'
-        : 'hover:bg-slate-50 text-slate-700 border border-transparent'
-    }`}
-    onClick={onSelect}
-  >
-    <div className="flex-1 min-w-0 pr-2">
-      <p className="font-semibold truncate text-slate-800 group-hover:text-slate-900">{session.title}</p>
-      <p className="text-[10px] text-slate-500 truncate">{session.source_platform}</p>
+    <div className={`shrink-0 ${active ? 'text-blue-600' : 'text-slate-500'}`}>
+      {icon}
     </div>
-    <button
-      onClick={(e) => {
-        e.stopPropagation();
-        onDelete();
-      }}
-      title="Delete session"
-      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 text-slate-400 hover:text-red-500 transition-opacity"
-    >
-      <Trash2 className="w-3.5 h-3.5" />
-    </button>
-  </div>
+    <span className="truncate text-[11px]">{label}</span>
+    {isLiveDot && active && (
+      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 ml-auto shrink-0 animate-pulse" />
+    )}
+  </button>
 );
