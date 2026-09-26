@@ -209,9 +209,10 @@ export class BrowserMediaCaptureManager {
 
       let accumulatedSamples: number[] = [];
       let previousOverlap: number[] = [];
-      // 1.0s target new audio (16,000 samples) + 0.3s sliding overlap (4,800 samples)
-      const targetNewSamples = Math.round(actualSampleRate * 1.0);
-      const overlapLength = Math.round(actualSampleRate * 0.3);
+      // 1.2s target new audio (19,200 samples at 16kHz) for ultra-low latency real-time transcription.
+      // 0.25s sliding overlap handles boundary words cleanly without delay.
+      const targetNewSamples = Math.round(actualSampleRate * 1.2);
+      const overlapLength = Math.round(actualSampleRate * 0.25);
 
       this.audioProcessor.onaudioprocess = (e: AudioProcessingEvent) => {
         if (!this.callbacks?.onAudioChunk) return;

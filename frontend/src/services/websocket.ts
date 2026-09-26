@@ -2,6 +2,8 @@ import { TranscriptSegment, FrameCapture, Concept } from '../types';
 
 export interface SessionWSEvents {
   onTranscriptReceived?: (segment: TranscriptSegment, newConcepts: Concept[]) => void;
+  /** Called while the current 60-second window is still accumulating */
+  onTranscriptInterim?: (text: string, timestampFormatted: string, speaker: string) => void;
   onFrameAnalyzed?: (frame: FrameCapture) => void;
   onConceptsUpdated?: (newConcepts: Concept[]) => void;
   onStatusChange?: (status: string) => void;
@@ -46,6 +48,12 @@ export class SessionWebSocketClient {
           const payload = JSON.parse(event.data);
           if (payload.event === 'transcript_received') {
             this.events.onTranscriptReceived?.(payload.segment, payload.new_concepts || []);
+          } else if (payload.event === 'transcript_interim') {
+            this.events.onTranscriptInterim?.(
+              payload.text || '',
+              payload.timestamp_formatted || '',
+              payload.speaker || 'Speaker'
+            );
           } else if (payload.event === 'frame_analyzed') {
             this.events.onFrameAnalyzed?.(payload.frame);
           } else if (payload.event === 'concepts_updated') {
@@ -92,6 +100,19 @@ export class SessionWebSocketClient {
     if (this.pingInterval) {
       clearInterval(this.pingInterval);
       this.pingInterval = null;
+    }
+  }
+
+  sendSessionStop(timestampSec: number) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      try {
+        this.socket.send(JSON.stringify({
+          type: 'session_stop',
+          timestamp_sec: timestampSec
+        }));
+      } catch (e) {
+        console.warn('Failed to send session_stop:', e);
+      }
     }
   }
 

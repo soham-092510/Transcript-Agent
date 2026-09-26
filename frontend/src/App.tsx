@@ -55,6 +55,8 @@ export function App() {
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [interimSpeech, setInterimSpeech] = useState<string>('');
+  // Holds the live-accumulating text for the current 60-second window
+  const [interimMinuteText, setInterimMinuteText] = useState<string>('');
 
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -137,10 +139,27 @@ export function App() {
 
       wsClientRef.current = new SessionWebSocketClient(s.id, {
         onTranscriptReceived: (newSeg, newConcepts) => {
-          setSegments(prev => [...prev, newSeg]);
+          setInterimMinuteText('');
+          setSegments(prev => {
+            const idx = prev.findIndex(seg => seg.id === newSeg.id || seg.timestamp_formatted === newSeg.timestamp_formatted);
+            if (idx >= 0) {
+              const updated = [...prev];
+              updated[idx] = newSeg;
+              return updated;
+            }
+            return [...prev, newSeg];
+          });
           if (newConcepts && newConcepts.length > 0) {
-            setConcepts(prev => [...prev, ...newConcepts]);
+            setConcepts(prev => {
+              const existingIds = new Set(prev.map(c => c.id));
+              const additions = newConcepts.filter(c => !existingIds.has(c.id));
+              return [...prev, ...additions];
+            });
           }
+        },
+        onTranscriptInterim: (text) => {
+          // Update the live-building text for the current minute window
+          setInterimMinuteText(text);
         },
         onFrameAnalyzed: (newFrame) => {
           setFrames(prev => {
@@ -240,8 +259,14 @@ export function App() {
   };
 
   const handleStopCapture = () => {
+    // Flush the current minute buffer before stopping
+    if (wsClientRef.current) {
+      const elapsedSec = (Date.now() - (mediaCaptureManager as any).startTime) / 1000 || 0;
+      wsClientRef.current.sendSessionStop(elapsedSec);
+    }
     mediaCaptureManager.stopCapture();
     setIsCapturing(false);
+    setInterimMinuteText('');
     if (activeSession) {
       api.stopAgent(activeSession.id);
     }
@@ -514,7 +539,8 @@ export function App() {
                 onForceCapture={handleForceCapture}
                 recentFrames={frames}
                 recentSegments={segments}
-                interimTranscript={interimSpeech}
+                interimTranscript={interimMinuteText}
+                interimWordTicker={interimSpeech}
                 concepts={concepts}
                 chatMessages={chatMessages}
                 isChatLoading={isChatLoading}

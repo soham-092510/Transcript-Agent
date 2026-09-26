@@ -160,6 +160,22 @@ def get_session_dir(session_id: str) -> Path:
     (s_dir / "exports").mkdir(parents=True, exist_ok=True)
     return s_dir
 
+def _deduplicate_overlap(last_tail: str, new_text: str) -> str:
+    """Strip overlapping words at chunk boundary from sliding-window audio capture."""
+    if not last_tail or not new_text:
+        return new_text.strip()
+    last_words = [w.lower().strip(".,?!;:") for w in last_tail.split()]
+    new_words = new_text.strip().split()
+    clean_new = [w.lower().strip(".,?!;:") for w in new_words]
+
+    max_k = min(len(last_words), len(clean_new), 6)
+    for k in range(max_k, 0, -1):
+        if last_words[-k:] == clean_new[:k]:
+            remaining = new_words[k:]
+            return " ".join(remaining).strip()
+    return new_text.strip()
+
+
 class DatabaseManager:
     @staticmethod
     def create_session(session: LearningSession) -> LearningSession:
@@ -297,13 +313,134 @@ class DatabaseManager:
         conn.close()
 
     @staticmethod
+    def group_segments_by_minute(segments: List[TranscriptSegment]) -> List[TranscriptSegment]:
+        """Consolidates any scattered micro-segments into clean 1-minute blocks."""
+        if not segments:
+            return []
+        grouped: Dict[int, TranscriptSegment] = {}
+        order: List[int] = []
+        for s in segments:
+            min_idx = int((s.timestamp_start or 0.0) // 60)
+            if min_idx not in grouped:
+                min_start_sec = min_idx * 60.0
+                formatted_ts = f"{int(min_start_sec // 60):02d}:00"
+                grouped[min_idx] = TranscriptSegment(
+                    id=f"{s.session_id}_min_{min_idx}",
+                    session_id=s.session_id,
+                    timestamp_start=min_start_sec,
+                    timestamp_end=s.timestamp_end,
+                    timestamp_formatted=formatted_ts,
+                    speaker=s.speaker or "Instructor",
+                    text=s.text.strip(),
+                    confidence=s.confidence or 0.95,
+                    topic=s.topic,
+                    associated_frame_id=s.associated_frame_id
+                )
+                order.append(min_idx)
+            else:
+                existing = grouped[min_idx]
+                clean = s.text.strip()
+                if clean:
+                    deduped = _deduplicate_overlap(existing.text, clean)
+                    if deduped:
+                        existing.text = f"{existing.text} {deduped}".strip()
+                if s.timestamp_end and s.timestamp_end > (existing.timestamp_end or 0):
+                    existing.timestamp_end = s.timestamp_end
+        return [grouped[k] for k in order]
+
+    @staticmethod
+    def upsert_minute_transcript_segment(
+        session_id: str,
+        minute_start_sec: float,
+        timestamp_end: float,
+        timestamp_formatted: str,
+        speaker: str,
+        new_text: str,
+        confidence: float = 0.95,
+        topic: Optional[str] = None,
+        associated_frame_id: Optional[str] = None
+    ) -> TranscriptSegment:
+        clean_new = new_text.strip()
+        min_idx = int(minute_start_sec // 60)
+        seg_id = f"{session_id}_min_{min_idx}"
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM transcript_segments WHERE id = ? OR (session_id = ? AND timestamp_formatted = ?)",
+            (seg_id, session_id, timestamp_formatted)
+        )
+        row = cursor.fetchone()
+
+        if row:
+            target_id = row["id"]
+            existing_text = row["text"] or ""
+            if clean_new:
+                deduped = _deduplicate_overlap(existing_text, clean_new)
+                if deduped:
+                    updated_text = f"{existing_text} {deduped}".strip()
+                else:
+                    updated_text = existing_text
+            else:
+                updated_text = existing_text
+
+            new_end = max(row["timestamp_end"] or 0.0, timestamp_end)
+            final_speaker = row["speaker"] if (row["speaker"] and row["speaker"] != "Speaker") else (speaker or "Instructor")
+
+            cursor.execute("""
+                UPDATE transcript_segments 
+                SET text = ?, timestamp_end = ?, speaker = ?
+                WHERE id = ?
+            """, (updated_text, new_end, final_speaker, target_id))
+            conn.commit()
+            conn.close()
+
+            return TranscriptSegment(
+                id=target_id,
+                session_id=session_id,
+                timestamp_start=row["timestamp_start"],
+                timestamp_end=new_end,
+                timestamp_formatted=row["timestamp_formatted"],
+                speaker=final_speaker,
+                text=updated_text,
+                confidence=confidence,
+                topic=row["topic"],
+                associated_frame_id=row["associated_frame_id"]
+            )
+        else:
+            cursor.execute("""
+            INSERT INTO transcript_segments (id, session_id, timestamp_start, timestamp_end, timestamp_formatted, speaker, text, confidence, topic, associated_frame_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                seg_id, session_id, minute_start_sec, timestamp_end,
+                timestamp_formatted, speaker or "Instructor", clean_new,
+                confidence, topic, associated_frame_id
+            ))
+            cursor.execute("UPDATE sessions SET updated_at = ? WHERE id = ?", (timestamp_end, session_id))
+            conn.commit()
+            conn.close()
+
+            return TranscriptSegment(
+                id=seg_id,
+                session_id=session_id,
+                timestamp_start=minute_start_sec,
+                timestamp_end=timestamp_end,
+                timestamp_formatted=timestamp_formatted,
+                speaker=speaker or "Instructor",
+                text=clean_new,
+                confidence=confidence,
+                topic=topic,
+                associated_frame_id=associated_frame_id
+            )
+
+    @staticmethod
     def get_transcript_segments(session_id: str) -> List[TranscriptSegment]:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT * FROM transcript_segments WHERE session_id = ? ORDER BY timestamp_start ASC", (session_id,))
         rows = cursor.fetchall()
         conn.close()
-        return [
+        raw_segments = [
             TranscriptSegment(
                 id=r["id"], session_id=r["session_id"], timestamp_start=r["timestamp_start"],
                 timestamp_end=r["timestamp_end"], timestamp_formatted=r["timestamp_formatted"],
@@ -311,6 +448,7 @@ class DatabaseManager:
                 topic=r["topic"], associated_frame_id=r["associated_frame_id"]
             ) for r in rows
         ]
+        return DatabaseManager.group_segments_by_minute(raw_segments)
 
     @staticmethod
     def add_frame(frame: FrameCapture):

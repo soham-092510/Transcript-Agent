@@ -42,7 +42,11 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
                     language=lang,
                     vad_filter=True,
                     condition_on_previous_text=False,
-                    vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
+                    initial_prompt="The following is a clear educational lecture transcript.",
+                    vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150),
+                    word_timestamps=False,
+                    no_speech_threshold=0.6,
+                    compression_ratio_threshold=2.4,
                 )
                 results = []
                 for s in segments:
@@ -81,19 +85,24 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
                 is_wav = audio_bytes[:4] == b'RIFF'
                 is_webm = audio_bytes[:4] == b'\x1a\x45\xdf\xa3'
 
+                _transcribe_kwargs = dict(
+                    beam_size=1,
+                    best_of=1,
+                    temperature=0.0,
+                    language=lang,
+                    vad_filter=True,
+                    condition_on_previous_text=False,
+                    initial_prompt="The following is a clear educational lecture transcript.",
+                    vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150),
+                    word_timestamps=False,
+                    no_speech_threshold=0.6,
+                    compression_ratio_threshold=2.4,
+                )
+
                 if is_wav or is_webm:
                     try:
                         audio_stream = io.BytesIO(audio_bytes)
-                        segments, _ = model.transcribe(
-                            audio_stream,
-                            beam_size=1,
-                            best_of=1,
-                            temperature=0.0,
-                            language=lang,
-                            vad_filter=True,
-                            condition_on_previous_text=False,
-                            vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
-                        )
+                        segments, _ = model.transcribe(audio_stream, **_transcribe_kwargs)
                         results = []
                         for s in segments:
                             seg_text = s.text.strip()
@@ -117,16 +126,7 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
                     tmp_path = tmp.name
 
                 try:
-                    segments, _ = model.transcribe(
-                        tmp_path,
-                        beam_size=1,
-                        best_of=1,
-                        temperature=0.0,
-                        language=lang,
-                        vad_filter=True,
-                        condition_on_previous_text=False,
-                        vad_parameters=dict(min_silence_duration_ms=250, speech_pad_ms=150)
-                    )
+                    segments, _ = model.transcribe(tmp_path, **_transcribe_kwargs)
                     results = []
                     for s in segments:
                         seg_text = s.text.strip()

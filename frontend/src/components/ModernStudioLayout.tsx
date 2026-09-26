@@ -48,7 +48,10 @@ interface ModernStudioLayoutProps {
   onForceCapture?: () => void;
   recentFrames: FrameCapture[];
   recentSegments: TranscriptSegment[];
+  /** Full text accumulated so far in the current 60-second window (not yet committed) */
   interimTranscript: string;
+  /** Single word/phrase being spoken right now (Web Speech API interim result) */
+  interimWordTicker?: string;
   concepts: Concept[];
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
@@ -69,6 +72,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
   recentFrames,
   recentSegments,
   interimTranscript,
+  interimWordTicker = '',
   concepts,
   chatMessages,
   isChatLoading,
@@ -499,78 +503,91 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
           </div>
 
           {/* Transcript Feed Items */}
-          <div 
+          <div
             ref={transcriptScrollRef}
             className="flex-1 overflow-y-auto py-3 space-y-3.5 pr-1 text-xs scrollbar-thin"
           >
-            {recentSegments.length === 0 ? (
+            {recentSegments.length === 0 && !interimWordTicker ? (
               <div className="space-y-3 pt-2 text-slate-300">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
-                    <span>04:12</span>
+                    <span>03:00</span>
                     <span className="font-semibold text-slate-300">Instructor</span>
                   </div>
                   <p className="leading-relaxed text-slate-300 text-[11px]">
-                    Today we will discuss the TLS 1.3 protocol and how it improves security and performance compared to previous versions.
+                    Today we will discuss the TLS 1.3 protocol and how it improves security and performance compared to previous versions. The ClientHello contains the supported cipher suites, key share, and parameters.
                   </p>
                 </div>
 
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
-                    <span>04:15</span>
-                    <span className="font-semibold text-slate-300">Instructor</span>
-                  </div>
-                  <p className="leading-relaxed text-slate-300 text-[11px]">
-                    The ClientHello contains the supported cipher suites, key share, and other information required for handshake negotiation.
-                  </p>
-                </div>
-
-                <div className="space-y-1 bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2 rounded-xl border border-cyan-400/30 shadow-neon-blue">
+                <div className="space-y-1 bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] shadow-neon-blue" />
-                    <span className="font-bold text-[#00D9FF]">04:18</span>
+                    <span className="font-bold text-[#00D9FF]">04:00</span>
                     <span className="font-bold text-[#F0F9FF]">Instructor</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
                   </div>
                   <p className="leading-relaxed text-slate-100 font-medium text-[11px]">
-                    The server responds with its own parameters and the key exchange process begins immediately without round-trip delays.
-                  </p>
-                </div>
-
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono">
-                    <span>04:22</span>
-                    <span className="font-semibold text-slate-300">Instructor</span>
-                  </div>
-                  <p className="leading-relaxed text-slate-300 text-[11px]">
-                    Once both sides agree, the session is established and encrypted communication begins across the channel.
+                    The server responds with its own parameters and the key exchange process begins immediately without round-trip delays. Once both sides agree, encrypted communication begins across the channel.
                   </p>
                 </div>
               </div>
             ) : (
-              recentSegments.map((seg, idx) => {
-                const isLatest = idx === recentSegments.length - 1;
-                return (
-                  <div 
-                    key={seg.id || idx} 
-                    className={`space-y-1 transition-all ${
-                      isLatest ? 'bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2 rounded-xl border border-cyan-400/30 shadow-neon-blue' : ''
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                      {isLatest && <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] shadow-neon-blue" />}
-                      <span className={isLatest ? 'font-bold text-[#00D9FF]' : 'text-slate-400'}>
-                        {seg.timestamp_formatted}
-                      </span>
-                      <span className={isLatest ? 'font-bold text-[#F0F9FF]' : 'font-semibold text-slate-300'}>
-                        {seg.speaker || 'Instructor'}
-                      </span>
+              <>
+                {/* 1-Minute blocks — words flow live into the active minute card */}
+                {recentSegments.map((seg, idx) => {
+                  const isLatest = idx === recentSegments.length - 1;
+                  return (
+                    <div
+                      key={seg.id || idx}
+                      className={`space-y-1 transition-all ${
+                        isLatest && isCapturing
+                          ? 'bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue'
+                          : 'p-1'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                        {isLatest && isCapturing ? (
+                          <>
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] animate-pulse shadow-neon-blue" />
+                            <span className="font-bold text-[#00D9FF]">[{seg.timestamp_formatted}]</span>
+                            <span className="font-bold text-[#F0F9FF]">{seg.speaker || 'Instructor'}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-slate-400 font-mono">[{seg.timestamp_formatted}]</span>
+                            <span className="font-semibold text-slate-300">{seg.speaker || 'Instructor'}</span>
+                          </>
+                        )}
+                      </div>
+                      <p className={`leading-relaxed text-[11px] ${isLatest && isCapturing ? 'text-slate-100 font-medium' : 'text-slate-300'}`}>
+                        {seg.text}
+                        {isLatest && isCapturing && interimWordTicker && (
+                          <span className="text-[#00D9FF] font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
+                        )}
+                      </p>
                     </div>
-                    <p className={`leading-relaxed text-[11px] ${isLatest ? 'text-slate-100 font-medium' : 'text-slate-300'}`}>
-                      {seg.text}
+                  );
+                })}
+
+                {/* If capturing but no segments committed yet, show the live 00:00 block */}
+                {recentSegments.length === 0 && (interimWordTicker || interimTranscript) && (
+                  <div className="space-y-1 bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue">
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] animate-pulse shadow-neon-blue" />
+                      <span className="font-bold text-[#00D9FF]">[00:00]</span>
+                      <span className="font-bold text-[#F0F9FF]">Instructor</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
+                    </div>
+                    <p className="leading-relaxed text-[11px] text-slate-100 font-medium">
+                      {interimTranscript || ''}
+                      {interimWordTicker && (
+                        <span className="text-[#00D9FF] font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
+                      )}
                     </p>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
 
@@ -599,7 +616,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                 <span>Speaking now</span>
               </div>
               <p className="text-[11px] text-slate-200 font-medium leading-snug line-clamp-2">
-                {interimTranscript || '...the client sends its key share and negotiates cipher parameters...'}
+                {interimWordTicker || interimTranscript || '...the client sends its key share and negotiates cipher parameters...'}
               </p>
             </div>
           </div>
