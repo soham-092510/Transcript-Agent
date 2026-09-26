@@ -14,6 +14,7 @@ import {
   VolumeX,
 } from 'lucide-react';
 import { ChatMessage, TeacherMode, LearningSession } from '../types';
+import { FormattedAnswer } from './FormattedAnswer';
 
 interface ChatInterfaceProps {
   session: LearningSession;
@@ -130,18 +131,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-50 overflow-hidden relative">
+    <div className="flex-1 flex flex-col h-full bg-[#0B0F17] overflow-hidden relative text-slate-200">
       {/* Mode Selector Header Bar */}
-      <div className="px-6 py-2.5 border-b border-slate-200 bg-white/90 backdrop-blur flex items-center justify-between gap-4 overflow-x-auto shadow-sm">
+      <div className="px-6 py-2.5 border-b border-slate-800 bg-slate-900/80 backdrop-blur-md flex items-center justify-between gap-4 overflow-x-auto shadow-sm">
         <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-none">
           {MODES.slice(0, 7).map((m) => (
             <button
               key={m.id}
               onClick={() => setSelectedMode(m.id)}
-              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 selectedMode === m.id
-                  ? 'bg-brand-600 text-white shadow-sm shadow-brand-600/25'
-                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  ? 'bg-slate-800 text-sky-400 border border-sky-400/40 shadow-metallic-subtle font-bold'
+                  : 'bg-slate-850/60 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
               }`}
             >
               <span>{m.icon}</span>
@@ -152,18 +153,18 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <select
             value={selectedMode}
             onChange={(e) => setSelectedMode(e.target.value as TeacherMode)}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-full px-3 py-1 border-none focus:ring-1 focus:ring-brand-500 outline-none cursor-pointer"
+            className="bg-slate-850 hover:bg-slate-800 text-slate-300 font-semibold text-xs rounded-full px-3 py-1 border border-slate-700/80 focus:border-sky-400 outline-none cursor-pointer"
           >
             {MODES.slice(7).map((m) => (
-              <option key={m.id} value={m.id}>
+              <option key={m.id} value={m.id} className="bg-slate-900 text-slate-200">
                 {m.icon} {m.label}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="text-[11px] text-slate-500 font-mono whitespace-nowrap">
-          Grounded in: <span className="text-brand-700 font-bold">{session.title.slice(0, 24)}...</span>
+        <div className="text-[11px] text-slate-400 font-mono whitespace-nowrap">
+          Grounded in: <span className="text-sky-400 font-bold">{session.title.slice(0, 24)}...</span>
         </div>
       </div>
 
@@ -171,12 +172,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-500 flex items-center justify-center shadow-lg shadow-brand-600/20">
-              <GraduationCap className="w-7 h-7 text-white" />
+            <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 text-sky-400 flex items-center justify-center shadow-metallic-subtle">
+              <GraduationCap className="w-7 h-7" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">Your AI Teacher is Ready</h3>
-              <p className="text-sm text-slate-600 mt-1">
+              <h3 className="text-xl font-bold text-slate-100 tracking-tight">Your AI Teacher is Ready</h3>
+              <p className="text-sm text-slate-400 mt-1">
                 Ask anything about your captured lesson. Answers are grounded in the lecture audio and slide diagrams.
               </p>
             </div>
@@ -187,9 +188,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                 <button
                   key={idx}
                   onClick={() => onSendMessage(s, selectedMode)}
-                  className="text-left p-3.5 rounded-2xl bg-white border border-slate-200 hover:border-brand-500 hover:shadow-md text-xs text-slate-700 hover:text-slate-900 transition-all group"
+                  className="text-left p-3.5 rounded-2xl metallic-card border border-slate-700/70 hover:border-slate-500 hover:bg-slate-850 text-xs text-slate-300 hover:text-slate-100 transition-all group cursor-pointer shadow-metallic-subtle"
                 >
-                  <span className="text-brand-600 font-bold block mb-1">Prompt #{idx + 1}</span>
+                  <span className="text-sky-400 font-bold block mb-1">Prompt #{idx + 1}</span>
                   "{s}"
                 </button>
               ))}
@@ -202,7 +203,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               className={`flex gap-3 max-w-3xl ${msg.sender === 'user' ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}
             >
               {msg.sender === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-600 to-emerald-600 flex items-center justify-center shrink-0 shadow-sm text-white">
+                <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
                   <Sparkles className="w-4 h-4" />
                 </div>
               )}
@@ -210,44 +211,48 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               <div
                 className={`rounded-2xl px-5 py-4 text-sm leading-relaxed ${
                   msg.sender === 'user'
-                    ? 'bg-brand-600 text-white rounded-tr-none shadow-md'
-                    : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none shadow-sm'
+                    ? 'bg-gradient-to-r from-sky-600 to-slate-700 text-white rounded-tr-none shadow-md border border-sky-400/30'
+                    : 'metallic-card border border-slate-700/80 text-slate-200 rounded-tl-none shadow-metallic-subtle'
                 }`}
               >
                 {/* Mode Tag */}
                 {msg.sender === 'assistant' && msg.mode && (
-                  <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-100 text-[11px] text-slate-500">
-                    <span className="flex items-center gap-1 font-mono uppercase tracking-wider text-brand-700 font-bold">
+                  <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-800 text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1 font-mono uppercase tracking-wider text-sky-400 font-bold">
                       Mode: {msg.mode.replace('_', ' ')}
                     </span>
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => handleSpeak(msg.id, msg.text)}
-                        className={`p-1 rounded transition-colors ${speakingId === msg.id ? 'text-red-500 bg-red-50' : 'hover:text-slate-900 text-slate-400'}`}
+                        className={`p-1 rounded transition-colors cursor-pointer ${speakingId === msg.id ? 'text-rose-400 bg-rose-500/10' : 'hover:text-slate-200 text-slate-400'}`}
                         title={speakingId === msg.id ? "Stop voice" : "Read aloud (Text-to-Speech)"}
                       >
                         {speakingId === msg.id ? <VolumeX className="w-3.5 h-3.5 animate-pulse" /> : <Volume2 className="w-3.5 h-3.5" />}
                       </button>
                       <button
                         onClick={() => handleCopy(msg.id, msg.text)}
-                        className="hover:text-slate-900 p-1 rounded transition-colors text-slate-400"
+                        className="hover:text-slate-200 p-1 rounded transition-colors text-slate-400 cursor-pointer"
                         title="Copy response"
                       >
-                        {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-brand-600" /> : <Copy className="w-3.5 h-3.5" />}
+                        {copiedId === msg.id ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     </div>
                   </div>
                 )}
 
                 {/* Message Content */}
-                <div className="prose prose-slate prose-sm max-w-none space-y-2 whitespace-pre-line text-slate-800 font-sans">
-                  {msg.text}
-                </div>
+                {msg.sender === 'user' ? (
+                  <div className="whitespace-pre-line font-sans text-slate-100 text-sm">
+                    {msg.text}
+                  </div>
+                ) : (
+                  <FormattedAnswer content={msg.text} />
+                )}
 
                 {/* Grounded Evidence Citations */}
                 {msg.evidence && msg.evidence.length > 0 && (
-                  <div className="mt-4 pt-3 border-t border-slate-100">
-                    <p className="text-[11px] font-bold text-brand-700 uppercase tracking-wider mb-2 flex items-center gap-1">
+                  <div className="mt-4 pt-3 border-t border-slate-800">
+                    <p className="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                       <Clock className="w-3 h-3" /> Grounded Source Evidence:
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -258,28 +263,28 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                             if (ev.frame_id && onOpenSlidePreview) onOpenSlidePreview(ev.frame_id);
                             else if (ev.timestamp && onSelectEvidenceTimestamp) onSelectEvidenceTimestamp(ev.timestamp);
                           }}
-                          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-50 border border-slate-200 hover:border-brand-500 hover:bg-white cursor-pointer transition-all group shadow-2xs"
+                          className="flex items-center gap-2.5 p-2 rounded-xl bg-slate-850/80 border border-slate-700/80 hover:border-slate-500 hover:bg-slate-800 cursor-pointer transition-all group shadow-2xs"
                         >
                           {ev.thumbnail_url ? (
                             <img
                               src={ev.thumbnail_url}
                               alt="Slide"
-                              className="w-12 h-8 rounded object-cover border border-slate-200 group-hover:border-brand-500"
+                              className="w-12 h-8 rounded object-cover border border-slate-700 group-hover:border-sky-400"
                             />
                           ) : (
-                            <div className="w-12 h-8 rounded bg-slate-200 flex items-center justify-center text-slate-500">
+                            <div className="w-12 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-400">
                               <ImageIcon className="w-3.5 h-3.5" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-[11px] font-bold text-slate-800 group-hover:text-brand-700 truncate">
+                            <p className="text-[11px] font-bold text-slate-200 group-hover:text-sky-300 truncate">
                               {ev.concept_name || 'Lesson Segment'}
                             </p>
-                            <p className="text-[10px] text-brand-600 font-mono font-semibold">
+                            <p className="text-[10px] text-sky-400 font-mono font-semibold">
                               Timestamp: [{ev.timestamp}]
                             </p>
                           </div>
-                          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-700" />
+                          <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-slate-200" />
                         </div>
                       ))}
                     </div>
@@ -292,12 +297,12 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 
         {isLoading && (
           <div className="flex gap-3 max-w-xl mr-auto">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-600 to-emerald-600 flex items-center justify-center shrink-0 animate-pulse text-white">
+            <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 text-sky-400 flex items-center justify-center shrink-0 animate-pulse">
               <Sparkles className="w-4 h-4" />
             </div>
-            <div className="rounded-2xl rounded-tl-none px-4 py-3 bg-white border border-slate-200 text-xs text-slate-600 flex items-center gap-2 shadow-sm">
-              <span className="w-2 h-2 rounded-full bg-brand-500 animate-ping" />
-              AI Teacher is synthesizing grounded explanation...
+            <div className="rounded-2xl rounded-tl-none px-4 py-3 metallic-card border border-slate-700/80 text-xs text-slate-300 flex items-center gap-2 shadow-metallic-subtle">
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
+              AI Teacher is synthesizing structured explanation...
             </div>
           </div>
         )}
@@ -305,7 +310,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       </div>
 
       {/* Input Bar */}
-      <div className="p-4 border-t border-slate-200 bg-white/95 backdrop-blur shadow-sm">
+      <div className="p-4 border-t border-slate-800 bg-slate-900/90 backdrop-blur-md shadow-sm">
         <form onSubmit={handleSubmit} className="relative flex items-center">
           <textarea
             rows={1}
@@ -318,7 +323,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               }
             }}
             placeholder={`Ask your AI Teacher (${MODES.find(m => m.id === selectedMode)?.label})...`}
-            className="w-full bg-slate-50 border border-slate-300 focus:bg-white focus:border-brand-500 rounded-2xl pl-4 pr-28 py-3 text-sm text-slate-900 placeholder-slate-400 focus:outline-none resize-none transition-all shadow-inner"
+            className="w-full bg-slate-850 border border-slate-700/80 focus:bg-slate-800 focus:border-sky-400/60 rounded-2xl pl-4 pr-28 py-3 text-sm text-slate-100 placeholder-slate-400 focus:outline-none resize-none transition-all shadow-inner"
           />
 
           <div className="absolute right-2 flex items-center gap-1">
@@ -326,8 +331,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
               type="button"
               onClick={handleVoiceInput}
               title={isRecording ? 'Stop Recording' : 'Voice Input'}
-              className={`p-2 rounded-xl transition-colors ${
-                isRecording ? 'bg-red-500 text-white animate-pulse' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-900'
+              className={`p-2 rounded-xl transition-colors cursor-pointer ${
+                isRecording ? 'bg-red-500 text-white animate-pulse' : 'hover:bg-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
               {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
@@ -336,7 +341,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
             <button
               type="submit"
               disabled={!inputText.trim() || isLoading}
-              className="p-2 rounded-xl bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:hover:bg-brand-600 text-white transition-all shadow-sm"
+              className="p-2 rounded-xl metallic-accent-btn disabled:opacity-40 text-white transition-all shadow-sm cursor-pointer"
             >
               <Send className="w-4 h-4" />
             </button>

@@ -67,7 +67,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-3.5 pb-2">
         <button
           onClick={onStartLearning}
-          className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:from-[#0EA5E9] hover:to-[#A855F7] text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-neon-blue transition-all transform active:scale-95 cursor-pointer"
+          className="w-full py-2 px-3.5 rounded-xl metallic-accent-btn text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-metallic-subtle transition-all transform active:scale-95 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>New Workspace</span>
@@ -149,12 +149,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => onSelectSession(sess)}
                   className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                     isSelected
-                      ? 'bg-white/10 text-[#00D9FF] font-semibold border border-cyan-500/30 shadow-neon-blue'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                      ? 'bg-slate-800 text-sky-400 font-semibold border border-slate-700 shadow-metallic-subtle'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0 pr-1">
-                    <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#00D9FF]' : 'text-slate-500'}`} />
+                    <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-sky-400' : 'text-slate-500'}`} />
                     <span className="truncate text-[11px]">{sess.title}</span>
                   </div>
                   {sess.id !== 'demo1' && (
@@ -177,33 +177,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Information Cards Matching Reference Image */}
-      <div className="p-3 border-t border-white/10 space-y-2.5 bg-transparent shrink-0">
+      <div className="p-3 border-t border-slate-800 space-y-2.5 bg-transparent shrink-0">
         {/* Today's Learning Card */}
-        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+        <div className="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800 space-y-1.5">
           <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
             <span>Today's Learning</span>
             <span className="text-slate-200 font-mono">3h 42m</span>
           </div>
-          {/* Neon Gradient Progress Bar */}
-          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] h-full w-[65%] rounded-full shadow-neon-blue" />
+          {/* Metallic Progress Bar */}
+          <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-gradient-to-r from-sky-400 to-slate-400 h-full w-[65%] rounded-full shadow-metallic-subtle" />
           </div>
         </div>
 
         {/* Upgrade / Better Learning with AI Card */}
         <button
           onClick={onLoadDemo}
-          className="w-full p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/40 to-purple-950/40 border border-purple-500/30 hover:border-cyan-400/50 flex items-center justify-between text-left transition-all group cursor-pointer shadow-neon-blue"
+          className="w-full p-2.5 rounded-xl metallic-card border border-slate-700/70 hover:border-slate-500 flex items-center justify-between text-left transition-all group cursor-pointer shadow-metallic-subtle"
         >
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#00D9FF] to-[#8B5CF6] text-white flex items-center justify-center shrink-0 shadow-neon-blue">
+            <div className="w-6 h-6 rounded-lg bg-slate-800 border border-slate-700 text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-bold text-slate-200 group-hover:text-[#00D9FF] transition-colors">
+            <span className="text-xs font-bold text-slate-200 group-hover:text-sky-300 transition-colors">
               Better learning with AI
             </span>
           </div>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#00D9FF] transition-transform group-hover:translate-x-0.5" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-300 transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>
     </aside>
@@ -221,16 +221,16 @@ const SidebarNavItem: React.FC<{
     onClick={onClick}
     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
       active
-        ? 'bg-white/10 text-[#00D9FF] font-bold border border-cyan-500/30 shadow-neon-blue'
-        : 'text-slate-400 hover:text-white hover:bg-white/5 font-medium'
+        ? 'bg-slate-800 text-sky-400 font-bold border border-slate-700 shadow-metallic-subtle'
+        : 'text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium'
     }`}
   >
-    <div className={`shrink-0 ${active ? 'text-[#00D9FF]' : 'text-slate-400'}`}>
+    <div className={`shrink-0 ${active ? 'text-sky-400' : 'text-slate-400'}`}>
       {icon}
     </div>
     <span className="truncate text-[11px]">{label}</span>
     {isLiveDot && active && (
-      <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] ml-auto shrink-0 animate-pulse shadow-neon-blue" />
+      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 ml-auto shrink-0 animate-pulse shadow-metallic-subtle" />
     )}
   </button>
 );

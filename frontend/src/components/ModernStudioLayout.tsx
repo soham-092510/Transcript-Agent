@@ -39,6 +39,7 @@ import {
   ChatMessage 
 } from '../types';
 import { mediaCaptureManager } from '../services/mediaCapture';
+import { FormattedAnswer } from './FormattedAnswer';
 
 interface ModernStudioLayoutProps {
   session: LearningSession | null;
@@ -153,14 +154,14 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
       title: 'Create a quiz',
       desc: 'Test your understanding',
       icon: Target,
-      iconBg: 'bg-cyan-500/10 text-[#00D9FF] border-cyan-500/20',
+      iconBg: 'bg-sky-500/15 text-sky-400 border-sky-500/30',
       prompt: 'Generate a 3-question multiple-choice practice quiz testing the key principles of this topic.'
     },
     {
       title: 'Generate flashcards',
       desc: 'Key concepts in seconds',
       icon: Layers,
-      iconBg: 'bg-purple-500/10 text-[#C084FC] border-purple-500/20',
+      iconBg: 'bg-slate-800 text-slate-300 border-slate-700',
       prompt: 'Create 5 active-recall flashcards with question and answer pairs covering this lecture.'
     },
     {
@@ -221,15 +222,15 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                 />
               ) : (
                 /* Fallback Educational Graphic matching the reference mockup */
-                <div className="relative w-full h-full bg-gradient-to-br from-[#0A0A1F] via-[#12122B] to-[#1A1A3A] p-6 flex flex-col justify-between text-white select-none">
+                <div className="relative w-full h-full bg-gradient-to-br from-[#0B0F17] via-[#0F172A] to-[#1E293B] p-6 flex flex-col justify-between text-white select-none">
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-cyan-500/20 text-[#00D9FF] border border-cyan-400/30">
+                      <span className="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-400/30">
                         TLS 1.3
                       </span>
                       <span className="text-xs text-slate-400">Architecture & Handshake Flow</span>
                     </div>
-                    <h2 className="text-xl font-bold text-[#F0F9FF] tracking-tight mt-2">
+                    <h2 className="text-xl font-bold text-slate-100 tracking-tight mt-2">
                       TLS 1.3 Architecture
                     </h2>
                   </div>
@@ -237,8 +238,8 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   {/* Diagram Graphics Simulation */}
                   <div className="grid grid-cols-3 gap-4 items-center my-auto py-2">
                     {/* Client Box */}
-                    <div className="p-3 rounded-xl bg-white/5 border border-cyan-400/20 text-center space-y-1 backdrop-blur-md">
-                      <div className="w-10 h-10 rounded-lg bg-cyan-500/20 text-[#00D9FF] flex items-center justify-center mx-auto">
+                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-700/80 text-center space-y-1 backdrop-blur-md shadow-metallic-subtle">
+                      <div className="w-10 h-10 rounded-lg bg-slate-800 text-sky-400 flex items-center justify-center mx-auto border border-slate-700">
                         💻
                       </div>
                       <p className="text-xs font-bold text-slate-200">Client</p>
@@ -246,15 +247,15 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                     </div>
 
                     {/* Handshake Arrows */}
-                    <div className="space-y-2 text-center text-[10px] font-mono text-[#00D9FF]">
-                      <div className="border-b border-cyan-400/50 pb-0.5">ClientHello & KeyShare →</div>
-                      <div className="border-b border-purple-400/50 pb-0.5 text-[#C084FC]">← ServerHello & Parameters</div>
+                    <div className="space-y-2 text-center text-[10px] font-mono text-sky-400">
+                      <div className="border-b border-sky-400/40 pb-0.5">ClientHello & KeyShare →</div>
+                      <div className="border-b border-slate-500/50 pb-0.5 text-slate-300">← ServerHello & Parameters</div>
                       <div className="text-slate-400">════ Encrypted Session ════</div>
                     </div>
 
                     {/* Server Box */}
-                    <div className="p-3 rounded-xl bg-white/5 border border-purple-400/20 text-center space-y-1 backdrop-blur-md">
-                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 text-[#C084FC] flex items-center justify-center mx-auto">
+                    <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-700/80 text-center space-y-1 backdrop-blur-md shadow-metallic-subtle">
+                      <div className="w-10 h-10 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center mx-auto border border-slate-700">
                         🗄️
                       </div>
                       <p className="text-xs font-bold text-slate-200">Server</p>
@@ -271,11 +272,11 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
             </div>
 
             {/* Presenter Video Inset (Picture-in-Picture in Top Right) */}
-            <div className="absolute top-3 right-3 w-28 h-20 rounded-xl bg-slate-900/80 backdrop-blur-md border border-white/20 shadow-neon-purple overflow-hidden z-10 hidden sm:flex items-center justify-center">
+            <div className="absolute top-3 right-3 w-28 h-20 rounded-xl bg-slate-900/90 backdrop-blur-md border border-slate-700 shadow-metallic-subtle overflow-hidden z-10 hidden sm:flex items-center justify-center">
               <div className="relative w-full h-full flex flex-col items-center justify-center bg-gradient-to-b from-slate-800 to-slate-950">
                 <span className="text-2xl">👨‍🏫</span>
                 <span className="text-[9px] font-semibold text-slate-300 mt-0.5">Instructor</span>
-                <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-neon-blue" />
+                <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-metallic-subtle" />
               </div>
             </div>
 
@@ -284,7 +285,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
               <div className="absolute inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center z-10 transition-opacity">
                 <button
                   onClick={onStartCapture}
-                  className="neon-glow-btn flex items-center gap-2.5 px-6 py-3 rounded-xl text-white font-semibold text-xs shadow-neon-blue transition-all transform active:scale-95 cursor-pointer"
+                  className="metallic-accent-btn flex items-center gap-2.5 px-6 py-3 rounded-xl text-white font-semibold text-xs shadow-metallic-glow transition-all transform active:scale-95 cursor-pointer"
                 >
                   <Play className="w-4 h-4 fill-white" />
                   <span>Start Chrome Observation</span>
@@ -293,15 +294,15 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
             )}
 
             {/* Video Controls Bar Overlay (Bottom of Video Player) */}
-            <div className="relative z-20 bg-gradient-to-t from-[#0A0A1F]/95 via-[#0A0A1F]/60 to-transparent p-3 pt-6 flex items-center justify-between text-white text-xs">
+            <div className="relative z-20 bg-gradient-to-t from-[#0B0F17]/95 via-[#0B0F17]/70 to-transparent p-3 pt-6 flex items-center justify-between text-white text-xs">
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="hover:text-[#00D9FF] transition-colors cursor-pointer"
+                  className="hover:text-sky-400 transition-colors cursor-pointer"
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 fill-current" />}
                 </button>
-                <button className="hover:text-[#00D9FF] transition-colors cursor-pointer">
+                <button className="hover:text-sky-400 transition-colors cursor-pointer">
                   <Volume2 className="w-4 h-4" />
                 </button>
                 <span className="font-mono text-[11px] text-slate-300">
@@ -312,22 +313,22 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
               {/* Center Scrubber Bar */}
               <div className="flex-1 mx-4">
                 <div className="w-full bg-white/10 hover:bg-white/20 h-1.5 rounded-full overflow-hidden cursor-pointer relative">
-                  <div className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] h-full w-[38%] rounded-full relative shadow-neon-blue">
-                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-[#F0F9FF] rounded-full shadow-neon-blue" />
+                  <div className="bg-gradient-to-r from-sky-500 to-slate-300 h-full w-[38%] rounded-full relative shadow-metallic-subtle">
+                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-metallic-subtle" />
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-2.5 text-slate-300">
-                <button className="hover:text-[#00D9FF] transition-colors cursor-pointer" title="Closed Captions">
+                <button className="hover:text-sky-400 transition-colors cursor-pointer" title="Closed Captions">
                   <Subtitles className="w-4 h-4" />
                 </button>
-                <button className="hover:text-[#00D9FF] transition-colors cursor-pointer" title="Video Quality">
+                <button className="hover:text-sky-400 transition-colors cursor-pointer" title="Video Quality">
                   <SettingsIcon className="w-4 h-4" />
                 </button>
                 <button 
                   onClick={() => activeFrame && onOpenSlidePreview(activeFrame.id)} 
-                  className="hover:text-[#00D9FF] transition-colors cursor-pointer" 
+                  className="hover:text-sky-400 transition-colors cursor-pointer" 
                   title="Expand Slide"
                 >
                   <Maximize2 className="w-4 h-4" />
@@ -338,50 +339,50 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
 
           {/* 4 Pipeline Status Cards in a Horizontal Row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="glass-panel p-3 rounded-2xl flex items-center gap-3 hover:border-cyan-400/40 hover:shadow-neon-blue">
-              <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-400/30 text-[#00D9FF] flex items-center justify-center shrink-0 shadow-xs">
+            <div className="metallic-card p-3 rounded-2xl flex items-center gap-3 hover:border-slate-600 hover:shadow-metallic-subtle">
+              <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-slate-700/80 text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
                 <Volume2 className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">AUDIO</p>
-                <p className="text-xs font-bold text-cyan-400 flex items-center gap-1">
+                <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
                   <span>✓</span> Captured
                 </p>
               </div>
             </div>
 
-            <div className="glass-panel p-3 rounded-2xl flex items-center gap-3 hover:border-purple-400/40 hover:shadow-neon-purple">
-              <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-400/30 text-[#C084FC] flex items-center justify-center shrink-0 shadow-xs">
+            <div className="metallic-card p-3 rounded-2xl flex items-center gap-3 hover:border-slate-600 hover:shadow-metallic-subtle">
+              <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-slate-700/80 text-slate-300 flex items-center justify-center shrink-0 shadow-sm">
                 <Eye className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">VISION</p>
-                <p className="text-xs font-bold text-cyan-400 flex items-center gap-1">
+                <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
                   <span>✓</span> Captured
                 </p>
               </div>
             </div>
 
-            <div className="glass-panel p-3 rounded-2xl flex items-center gap-3 hover:border-cyan-400/40 hover:shadow-neon-blue">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-400/30 text-blue-400 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="metallic-card p-3 rounded-2xl flex items-center gap-3 hover:border-slate-600 hover:shadow-metallic-subtle">
+              <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-slate-700/80 text-slate-300 flex items-center justify-center shrink-0 shadow-sm">
                 <FileText className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">OCR</p>
-                <p className="text-xs font-bold text-cyan-400 flex items-center gap-1">
+                <p className="text-xs font-bold text-emerald-400 flex items-center gap-1">
                   <span>✓</span> Captured
                 </p>
               </div>
             </div>
 
-            <div className="glass-panel p-3 rounded-2xl flex items-center gap-3 hover:border-purple-400/40 hover:shadow-neon-purple">
-              <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-400/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+            <div className="metallic-card p-3 rounded-2xl flex items-center gap-3 hover:border-slate-600 hover:shadow-metallic-subtle">
+              <div className="w-9 h-9 rounded-xl bg-slate-800/80 border border-slate-700/80 text-sky-400 flex items-center justify-center shrink-0 shadow-sm">
                 <BrainCircuit className="w-4 h-4" />
               </div>
               <div className="min-w-0">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">KNOWLEDGE</p>
-                <p className="text-xs font-bold text-[#00D9FF] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] animate-ping inline-block" />
+                <p className="text-xs font-bold text-sky-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-ping inline-block" />
                   Processing
                 </p>
               </div>
@@ -389,17 +390,17 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
           </div>
 
           {/* Captured Moments Carousel Strip */}
-          <div className="glass-panel p-4 rounded-2xl space-y-3">
+          <div className="metallic-panel p-4 rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight">Captured Moments</h3>
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-slate-300 font-mono font-bold border border-white/10">
+                <h3 className="text-xs font-bold text-slate-100 tracking-tight">Captured Moments</h3>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-mono font-bold border border-slate-700">
                   {displayFrames.length} Slides
                 </span>
               </div>
               <button 
                 onClick={() => onNavigateTab('slides')}
-                className="text-[11px] font-semibold text-[#00D9FF] hover:text-cyan-300 flex items-center gap-0.5 cursor-pointer"
+                className="text-[11px] font-semibold text-sky-400 hover:text-sky-300 flex items-center gap-0.5 cursor-pointer"
               >
                 <span>View all</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -417,10 +418,10 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                       setActiveSlideIndex(idx);
                       if (frame.id) onOpenSlidePreview(frame.id);
                     }}
-                    className={`w-32 shrink-0 p-1.5 rounded-xl border transition-all cursor-pointer group bg-white/5 hover:bg-white/10 ${
+                    className={`w-32 shrink-0 p-1.5 rounded-xl border transition-all cursor-pointer group bg-slate-900/60 hover:bg-slate-850 ${
                       isSelected 
-                        ? 'border-2 border-[#00D9FF] shadow-neon-blue bg-white/10 ring-2 ring-cyan-500/20' 
-                        : 'border-white/10 hover:border-cyan-400/40'
+                        ? 'border-2 border-sky-400 shadow-metallic-subtle bg-slate-800/80 ring-2 ring-sky-500/20' 
+                        : 'border-slate-800 hover:border-slate-700'
                     }`}
                   >
                     <div className="aspect-video rounded-lg bg-black/40 overflow-hidden mb-1.5 flex items-center justify-center relative border border-white/5">
@@ -431,7 +432,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
                         />
                       ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-slate-900 to-indigo-950 flex items-center justify-center p-1 text-center">
+                        <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-1 text-center">
                           <span className="text-[9px] font-bold text-slate-300 leading-tight line-clamp-2">
                             {frame.visual_description || `Slide ${idx + 1}`}
                           </span>
@@ -439,7 +440,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                       )}
                     </div>
                     <div className="space-y-0.5 px-0.5">
-                      <p className="text-[10px] font-mono font-bold text-[#F0F9FF]">
+                      <p className="text-[10px] font-mono font-bold text-slate-200">
                         {frame.timestamp_formatted || `0${idx}:20`}
                       </p>
                       <p className="text-[9px] text-slate-400 truncate">
@@ -452,7 +453,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
 
               <button 
                 onClick={() => onNavigateTab('slides')}
-                className="w-8 h-20 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-[#00D9FF] shrink-0 cursor-pointer"
+                className="w-8 h-20 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700/80 flex items-center justify-center text-slate-400 hover:text-sky-400 shrink-0 cursor-pointer"
                 title="Browse all slides"
               >
                 <ChevronRight className="w-4 h-4" />
@@ -460,16 +461,16 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
             </div>
 
             {/* Bottom Scrubber Pill Controls */}
-            <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs text-slate-400">
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
               <div className="flex items-center gap-2">
-                <button className="text-slate-300 hover:text-[#00D9FF] cursor-pointer">
+                <button className="text-slate-300 hover:text-sky-400 cursor-pointer">
                   <Play className="w-3.5 h-3.5 fill-current" />
                 </button>
                 <span className="font-mono text-[11px] text-slate-300">04:18</span>
               </div>
               <div className="flex-1 mx-3">
-                <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] h-full w-[45%] rounded-full shadow-neon-blue" />
+                <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-gradient-to-r from-sky-500 to-slate-400 h-full w-[45%] rounded-full shadow-metallic-subtle" />
                 </div>
               </div>
               <div className="flex items-center gap-2 font-mono text-[11px] text-slate-400">
@@ -490,11 +491,11 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
         {/* ======================================================================= */}
         {/* COLUMN 2: LIVE SPEECH TRANSCRIPT PANEL (3 COLS / ~25%)                  */}
         {/* ======================================================================= */}
-        <div className="lg:col-span-3 glass-panel rounded-2xl p-4 flex flex-col h-[585px]">
+        <div className="lg:col-span-3 metallic-panel rounded-2xl p-4 flex flex-col h-[585px]">
           {/* Header with Live Badge */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight">Live Transcript</h3>
+              <h3 className="text-xs font-bold text-slate-100 tracking-tight">Live Transcript</h3>
             </div>
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 font-bold text-[10px] tracking-wide">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
@@ -519,12 +520,12 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   </p>
                 </div>
 
-                <div className="space-y-1 bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue">
+                <div className="space-y-1 bg-slate-800/80 -mx-2 p-2.5 rounded-xl border border-sky-400/30 shadow-metallic-subtle">
                   <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] shadow-neon-blue" />
-                    <span className="font-bold text-[#00D9FF]">04:00</span>
-                    <span className="font-bold text-[#F0F9FF]">Instructor</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-sky-400 shadow-metallic-subtle" />
+                    <span className="font-bold text-sky-400">04:00</span>
+                    <span className="font-bold text-slate-100">Instructor</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 ml-auto font-sans font-semibold">● Active Minute</span>
                   </div>
                   <p className="leading-relaxed text-slate-100 font-medium text-[11px]">
                     The server responds with its own parameters and the key exchange process begins immediately without round-trip delays. Once both sides agree, encrypted communication begins across the channel.
@@ -541,17 +542,17 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                       key={seg.id || idx}
                       className={`space-y-1 transition-all ${
                         isLatest && isCapturing
-                          ? 'bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue'
+                          ? 'bg-slate-800/80 -mx-2 p-2.5 rounded-xl border border-sky-400/30 shadow-metallic-subtle'
                           : 'p-1'
                       }`}
                     >
                       <div className="flex items-center gap-1.5 text-[10px] font-mono">
                         {isLatest && isCapturing ? (
                           <>
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] animate-pulse shadow-neon-blue" />
-                            <span className="font-bold text-[#00D9FF]">[{seg.timestamp_formatted}]</span>
-                            <span className="font-bold text-[#F0F9FF]">{seg.speaker || 'Instructor'}</span>
-                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shadow-metallic-subtle" />
+                            <span className="font-bold text-sky-400">[{seg.timestamp_formatted}]</span>
+                            <span className="font-bold text-slate-100">{seg.speaker || 'Instructor'}</span>
+                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 ml-auto font-sans font-semibold">● Active Minute</span>
                           </>
                         ) : (
                           <>
@@ -563,7 +564,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                       <p className={`leading-relaxed text-[11px] ${isLatest && isCapturing ? 'text-slate-100 font-medium' : 'text-slate-300'}`}>
                         {seg.text}
                         {isLatest && isCapturing && interimWordTicker && (
-                          <span className="text-[#00D9FF] font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
+                          <span className="text-sky-400 font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
                         )}
                       </p>
                     </div>
@@ -572,17 +573,17 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
 
                 {/* If capturing but no segments committed yet, show the live 00:00 block */}
                 {recentSegments.length === 0 && (interimWordTicker || interimTranscript) && (
-                  <div className="space-y-1 bg-gradient-to-r from-cyan-950/50 to-purple-950/50 -mx-2 p-2.5 rounded-xl border border-cyan-400/30 shadow-neon-blue">
+                  <div className="space-y-1 bg-slate-800/80 -mx-2 p-2.5 rounded-xl border border-sky-400/30 shadow-metallic-subtle">
                     <div className="flex items-center gap-1.5 text-[10px] font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] animate-pulse shadow-neon-blue" />
-                      <span className="font-bold text-[#00D9FF]">[00:00]</span>
-                      <span className="font-bold text-[#F0F9FF]">Instructor</span>
-                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-cyan-400/20 text-cyan-300 ml-auto font-sans font-semibold">● Active Minute</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shadow-metallic-subtle" />
+                      <span className="font-bold text-sky-400">[00:00]</span>
+                      <span className="font-bold text-slate-100">Instructor</span>
+                      <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 ml-auto font-sans font-semibold">● Active Minute</span>
                     </div>
                     <p className="leading-relaxed text-[11px] text-slate-100 font-medium">
                       {interimTranscript || ''}
                       {interimWordTicker && (
-                        <span className="text-[#00D9FF] font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
+                        <span className="text-sky-400 font-semibold opacity-90 animate-pulse"> {interimWordTicker}</span>
                       )}
                     </p>
                   </div>
@@ -592,9 +593,9 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
           </div>
 
           {/* Sound Wave Visualizer & Speaking Now Ticker (Pinned at Bottom of Transcript) */}
-          <div className="pt-3 border-t border-white/10 shrink-0 space-y-2.5">
+          <div className="pt-3 border-t border-slate-800 shrink-0 space-y-2.5">
             {/* Animated Audio Waveform */}
-            <div className="flex items-center justify-center gap-1 py-1 px-3 bg-white/5 rounded-xl border border-white/10">
+            <div className="flex items-center justify-center gap-1 py-1 px-3 bg-slate-900/60 rounded-xl border border-slate-800">
               <span className="text-[10px] text-slate-400 font-mono mr-1">🎙️</span>
               {[12, 24, 32, 16, 28, 40, 20, 36, 18, 28, 38, 14, 26, 32, 20, 16, 28, 36, 18, 10].map((h, i) => (
                 <span
@@ -602,17 +603,17 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   style={{ height: `${h}px` }}
                   className={`w-1 rounded-full transition-all duration-300 ${
                     isCapturing 
-                      ? 'bg-gradient-to-t from-cyan-400 to-purple-400 animate-pulse shadow-neon-blue' 
-                      : 'bg-white/20'
+                      ? 'bg-gradient-to-t from-sky-400 to-slate-400 animate-pulse shadow-metallic-subtle' 
+                      : 'bg-slate-700/50'
                   }`}
                 />
               ))}
             </div>
 
             {/* Speaking Now Real-time Ticker */}
-            <div className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/50 to-purple-950/50 border border-cyan-400/30 text-xs shadow-neon-blue backdrop-blur-md">
-              <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#00D9FF] mb-0.5">
-                <Mic className="w-3 h-3 text-[#00D9FF] animate-pulse" />
+            <div className="p-2.5 rounded-xl bg-slate-850 border border-slate-700/80 text-xs shadow-metallic-subtle backdrop-blur-md">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-sky-400 mb-0.5">
+                <Mic className="w-3 h-3 text-sky-400 animate-pulse" />
                 <span>Speaking now</span>
               </div>
               <p className="text-[11px] text-slate-200 font-medium leading-snug line-clamp-2">
@@ -625,11 +626,11 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
         {/* ======================================================================= */}
         {/* COLUMN 3: AI TEACHER ASSISTANT PANEL (3 COLS / ~25%)                    */}
         {/* ======================================================================= */}
-        <div className="lg:col-span-3 glass-panel rounded-2xl p-4 flex flex-col h-[585px]">
+        <div className="lg:col-span-3 metallic-panel rounded-2xl p-4 flex flex-col h-[585px]">
           {/* Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 shrink-0">
             <div>
-              <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight">AI Teacher</h3>
+              <h3 className="text-xs font-bold text-slate-100 tracking-tight">AI Teacher</h3>
               <p className="text-[10px] text-slate-400">Ask anything about this lecture</p>
             </div>
             <button className="text-slate-400 hover:text-slate-200 cursor-pointer">
@@ -643,12 +644,12 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
             className="flex-1 overflow-y-auto py-3 space-y-3 pr-1 text-xs scrollbar-thin"
           >
             {/* Friendly Greeting Card */}
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-cyan-950/30 to-purple-950/30 border border-purple-500/30 text-slate-200 space-y-2 shadow-neon-purple">
+            <div className="metallic-card p-3 rounded-xl border border-slate-700/70 text-slate-200 space-y-2 shadow-metallic-subtle">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-[#00D9FF] to-[#8B5CF6] text-white flex items-center justify-center shadow-neon-blue">
+                <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-sky-500 to-slate-600 text-white flex items-center justify-center shadow-sm">
                   <Bot className="w-4 h-4" />
                 </div>
-                <h4 className="text-xs font-bold text-[#F0F9FF]">Hello! I'm your AI Teacher.</h4>
+                <h4 className="text-xs font-bold text-slate-100">Hello! I'm your AI Teacher.</h4>
               </div>
               <p className="text-[11px] text-slate-300 leading-relaxed">
                 I can explain concepts, answer questions, create quizzes, flashcards, and more — with exact timestamps and slide references.
@@ -661,26 +662,30 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
               return (
                 <div
                   key={msg.id || i}
-                  className={`p-3 rounded-2xl text-xs space-y-1.5 ${
+                  className={`p-3 rounded-xl text-xs space-y-1.5 ${
                     isUser
-                      ? 'bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] text-white ml-4 shadow-neon-blue'
-                      : 'bg-white/5 border border-white/10 text-slate-200 mr-2 shadow-xs backdrop-blur-md'
+                      ? 'bg-gradient-to-r from-sky-600 to-slate-700 text-white ml-5 shadow-sm border border-sky-400/30'
+                      : 'metallic-card border border-slate-700/70 text-slate-200 mr-1 shadow-metallic-subtle'
                   }`}
                 >
-                  <div className="flex items-center justify-between text-[10px] opacity-75 font-semibold">
-                    <span>{isUser ? 'You' : 'AI Teacher'}</span>
+                  <div className="flex items-center justify-between text-[10px] opacity-80 font-semibold text-slate-300">
+                    <span>{isUser ? '👤 You' : '👨‍🏫 AI Teacher'}</span>
                   </div>
-                  <div className="leading-relaxed whitespace-pre-wrap text-[11px]">
-                    {msg.text}
-                  </div>
+                  {isUser ? (
+                    <div className="leading-relaxed whitespace-pre-wrap text-[11px] text-slate-100">
+                      {msg.text}
+                    </div>
+                  ) : (
+                    <FormattedAnswer content={msg.text} />
+                  )}
                 </div>
               );
             })}
 
             {isChatLoading && (
-              <div className="p-3 rounded-2xl bg-white/5 border border-white/10 text-xs flex items-center gap-2 text-slate-300 backdrop-blur-md">
-                <Sparkles className="w-3.5 h-3.5 text-[#00D9FF] animate-spin" />
-                <span className="text-[11px]">AI Teacher is preparing answer...</span>
+              <div className="metallic-card p-3 rounded-xl border border-slate-700/70 text-xs flex items-center gap-2 text-slate-300">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400 animate-spin" />
+                <span className="text-[11px]">AI Teacher is synthesizing structured answer...</span>
               </div>
             )}
 
@@ -693,20 +698,20 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                     <button
                       key={i}
                       onClick={() => handleSendPrompt(qa.prompt)}
-                      className="w-full p-2.5 rounded-xl border border-white/10 hover:border-cyan-400/40 bg-white/5 hover:bg-white/10 hover:shadow-neon-blue flex items-center gap-2.5 transition-all text-left group shadow-xs cursor-pointer backdrop-blur-md"
+                      className="w-full p-2.5 rounded-xl border border-slate-800 hover:border-slate-600 bg-slate-900/60 hover:bg-slate-850 hover:shadow-metallic-subtle flex items-center gap-2.5 transition-all text-left group shadow-xs cursor-pointer backdrop-blur-md"
                     >
                       <div className={`w-7 h-7 rounded-lg ${qa.iconBg} border flex items-center justify-center shrink-0`}>
                         <IconComp className="w-3.5 h-3.5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold text-slate-200 group-hover:text-[#00D9FF] transition-colors">
+                        <p className="text-xs font-bold text-slate-200 group-hover:text-sky-300 transition-colors">
                           {qa.title}
                         </p>
                         <p className="text-[10px] text-slate-400 truncate">
                           {qa.desc}
                         </p>
                       </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#00D9FF] group-hover:translate-x-0.5 transition-all shrink-0" />
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-300 group-hover:translate-x-0.5 transition-all shrink-0" />
                     </button>
                   );
                 })}
@@ -715,15 +720,15 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
           </div>
 
           {/* Bottom Chat Input Dock */}
-          <div className="pt-2 border-t border-white/10 shrink-0">
-            <div className="relative flex items-center bg-white/5 rounded-xl border border-white/10 focus-within:border-cyan-400 focus-within:shadow-neon-blue transition-all backdrop-blur-md">
+          <div className="pt-2 border-t border-slate-800 shrink-0">
+            <div className="relative flex items-center bg-slate-900/80 rounded-xl border border-slate-700/80 focus-within:border-sky-400/60 focus-within:shadow-metallic-subtle transition-all backdrop-blur-md">
               <input
                 type="text"
                 placeholder="Ask a question about this lecture..."
                 value={inputQuestion}
                 onChange={(e) => setInputQuestion(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="w-full bg-transparent pl-3 pr-16 py-2.5 text-xs text-[#F0F9FF] placeholder-slate-400 focus:outline-none"
+                className="w-full bg-transparent pl-3 pr-16 py-2.5 text-xs text-slate-100 placeholder-slate-400 focus:outline-none"
               />
               <div className="absolute right-2 flex items-center gap-1.5">
                 <button 
@@ -737,7 +742,7 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   type="button"
                   onClick={() => handleSendPrompt()}
                   disabled={!inputQuestion.trim() || isChatLoading}
-                  className="p-1.5 rounded-lg neon-glow-btn text-white transition-all shadow-neon-blue cursor-pointer disabled:opacity-40"
+                  className="p-1.5 rounded-lg metallic-accent-btn text-white transition-all shadow-metallic-subtle cursor-pointer disabled:opacity-40"
                 >
                   <Send className="w-3 h-3" />
                 </button>
@@ -753,17 +758,17 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         
         {/* CARD 1: CURRENT SLIDE (3 COLS / ~25%) */}
-        <div className="lg:col-span-3 glass-panel p-4 rounded-2xl space-y-3">
+        <div className="lg:col-span-3 metallic-panel p-4 rounded-2xl space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight">Current Slide</h3>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 font-mono font-bold border border-cyan-400/30">
+            <h3 className="text-xs font-bold text-slate-100 tracking-tight">Current Slide</h3>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-sky-400 font-mono font-bold border border-slate-700">
               {activeSlideIndex + 1} / {displayFrames.length}
             </span>
           </div>
 
           <div 
             onClick={() => activeFrame && onOpenSlidePreview(activeFrame.id)}
-            className="aspect-video rounded-xl bg-slate-950 border border-white/10 overflow-hidden relative group cursor-pointer shadow-neon-purple flex items-center justify-center"
+            className="aspect-video rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative group cursor-pointer shadow-metallic-subtle flex items-center justify-center"
           >
             {activeFrame && activeFrame.image_path ? (
               <img
@@ -773,12 +778,12 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
               />
             ) : (
               <div className="p-3 text-center text-white space-y-1 select-none">
-                <span className="text-xs font-bold text-[#00D9FF]">TLS 1.3 Architecture</span>
+                <span className="text-xs font-bold text-sky-400">TLS 1.3 Architecture</span>
                 <p className="text-[10px] text-slate-400 font-mono">04:18 • Diagram</p>
               </div>
             )}
             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <span className="px-2.5 py-1 rounded-lg bg-white/90 text-slate-900 text-[10px] font-bold shadow-md flex items-center gap-1">
+              <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-900 text-[10px] font-bold shadow-md flex items-center gap-1">
                 <Maximize2 className="w-3 h-3" /> Zoom Slide
               </span>
             </div>
@@ -786,9 +791,9 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
         </div>
 
         {/* CARD 2: KEY CONCEPTS & TRANSCRIPT HIGHLIGHTS (6 COLS / ~50%) */}
-        <div className="lg:col-span-6 glass-panel p-4 rounded-2xl space-y-3">
+        <div className="lg:col-span-6 metallic-panel p-4 rounded-2xl space-y-3">
           <div>
-            <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight mb-2">Key Concepts</h3>
+            <h3 className="text-xs font-bold text-slate-100 tracking-tight mb-2">Key Concepts</h3>
             {/* Concepts Tag Cloud matching reference */}
             <div className="flex items-center gap-1.5 flex-wrap">
               {(concepts.length > 0 ? concepts : [
@@ -806,10 +811,10 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   onClick={() => handleSendPrompt(`Teach me everything about ${c.name}`)}
                   className={`text-[11px] px-2.5 py-1 rounded-lg font-medium cursor-pointer transition-all border ${
                     i === 0 
-                      ? 'bg-cyan-500/20 text-[#00D9FF] border-cyan-400/40 font-bold shadow-neon-blue' 
+                      ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 font-semibold shadow-metallic-subtle' 
                       : i === 2 
-                      ? 'bg-purple-500/20 text-[#C084FC] border-purple-400/40 font-bold shadow-neon-purple'
-                      : 'bg-white/5 text-slate-300 border-white/10 hover:border-cyan-400/40 hover:bg-white/10 hover:text-white'
+                      ? 'bg-slate-800 text-slate-200 border-slate-700 font-semibold'
+                      : 'bg-slate-900/60 text-slate-300 border-slate-800 hover:border-slate-700 hover:bg-slate-800 hover:text-white'
                   }`}
                 >
                   {i === 0 || i === 7 ? `✦ ${c.name}` : c.name}
@@ -819,13 +824,13 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
           </div>
 
           {/* Transcript Highlights */}
-          <div className="pt-2 border-t border-white/10 space-y-1">
+          <div className="pt-2 border-t border-slate-800 space-y-1">
             <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-              <span className="text-[#00D9FF]">❖</span>
+              <span className="text-sky-400">❖</span>
               Transcript Highlights
             </h4>
-            <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex items-start gap-2 text-xs">
-              <span className="text-[#00D9FF] mt-0.5 shrink-0">◇</span>
+            <div className="p-2.5 rounded-xl metallic-card border border-slate-800 flex items-start gap-2 text-xs">
+              <span className="text-sky-400 mt-0.5 shrink-0">◇</span>
               <div className="space-y-1 min-w-0">
                 <p className="text-[11px] text-slate-300 leading-relaxed font-normal">
                   This section explains how TLS 1.3 improves security and reduces latency compared to TLS 1.2 by removing obsolete cipher suites and establishing 0-RTT resumption.
@@ -839,74 +844,74 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
         </div>
 
         {/* CARD 3: ADDITIONAL RESOURCES (3 COLS / ~25%) */}
-        <div className="lg:col-span-3 glass-panel p-4 rounded-2xl space-y-3">
+        <div className="lg:col-span-3 metallic-panel p-4 rounded-2xl space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-[#F0F9FF] tracking-tight">Additional Resources</h3>
+            <h3 className="text-xs font-bold text-slate-100 tracking-tight">Additional Resources</h3>
           </div>
 
           <div className="space-y-1.5">
             <button
               onClick={() => onGeneratePDF('summary')}
-              className="w-full p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 flex items-center justify-between text-left transition-all group cursor-pointer"
+              className="w-full p-2 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700 flex items-center justify-between text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-cyan-500/15 border border-cyan-400/30 text-[#00D9FF] flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700 text-sky-400 flex items-center justify-center shrink-0 shadow-xs">
                   <FileText className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-200 group-hover:text-[#00D9FF] transition-colors">Lecture Notes</p>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-sky-300 transition-colors">Lecture Notes</p>
                   <p className="text-[10px] text-slate-400">AI generated summary and notes</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-[#00D9FF] transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-sky-300 transition-transform group-hover:translate-x-0.5" />
             </button>
 
             <button
               onClick={() => handleSendPrompt('Create 5 study flashcards for this lecture')}
-              className="w-full p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 flex items-center justify-between text-left transition-all group cursor-pointer"
+              className="w-full p-2 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700 flex items-center justify-between text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-400/30 text-[#C084FC] flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700 text-slate-300 flex items-center justify-center shrink-0 shadow-xs">
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-200 group-hover:text-[#C084FC] transition-colors">Flashcards</p>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-slate-100 transition-colors">Flashcards</p>
                   <p className="text-[10px] text-slate-400">Key concepts for quick review</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-[#C084FC] transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-100 transition-transform group-hover:translate-x-0.5" />
             </button>
 
             <button
               onClick={onTakeQuiz}
-              className="w-full p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 flex items-center justify-between text-left transition-all group cursor-pointer"
+              className="w-full p-2 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700 flex items-center justify-between text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-teal-500/15 border border-teal-400/30 text-teal-400 flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700 text-emerald-400 flex items-center justify-center shrink-0 shadow-xs">
                   <Target className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-200 group-hover:text-teal-400 transition-colors">Practice Quiz</p>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">Practice Quiz</p>
                   <p className="text-[10px] text-slate-400">Test your knowledge</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-teal-400 transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
             </button>
 
             <button
               onClick={() => onGeneratePPT('teaching', 8)}
-              className="w-full p-2 rounded-xl hover:bg-white/5 border border-transparent hover:border-white/10 flex items-center justify-between text-left transition-all group cursor-pointer"
+              className="w-full p-2 rounded-xl hover:bg-slate-800/60 border border-transparent hover:border-slate-700 flex items-center justify-between text-left transition-all group cursor-pointer"
             >
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-indigo-500/15 border border-indigo-400/30 text-indigo-400 flex items-center justify-center shrink-0 shadow-xs">
+                <div className="w-8 h-8 rounded-lg bg-slate-800/80 border border-slate-700 text-indigo-300 flex items-center justify-center shrink-0 shadow-xs">
                   <Presentation className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-400 transition-colors">Presentation</p>
+                  <p className="text-xs font-bold text-slate-200 group-hover:text-indigo-300 transition-colors">Presentation</p>
                   <p className="text-[10px] text-slate-400">Slides and visual summary</p>
                 </div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-400 transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-indigo-300 transition-transform group-hover:translate-x-0.5" />
             </button>
           </div>
         </div>

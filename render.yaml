@@ -1,0 +1,52 @@
+# Render Blueprint Specification for LearnLens AI (Transcript Agent)
+# Deploys both FastAPI Backend and Vite React Frontend together.
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # -----------------------------------------------------------------
+  # 1. FastAPI Multimodal Backend Web Service
+  # -----------------------------------------------------------------
+  - type: web
+    name: transcript-agent-backend
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/system/status
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.11
+      - key: FAST_MODE
+        value: "true"
+      - key: ENABLE_LIVE_VLM
+        value: "false"
+      - key: ENABLE_LIVE_WHISPER
+        value: "true"
+      - key: OLLAMA_BASE_URL
+        value: http://localhost:11434
+      - key: DEFAULT_LLM_MODEL
+        value: qwen2.5:latest
+      - key: WHISPER_MODEL
+        value: tiny.en
+
+  # -----------------------------------------------------------------
+  # 2. Vite React Frontend Static Site
+  # -----------------------------------------------------------------
+  - type: web
+    name: transcript-agent-frontend
+    runtime: static
+    plan: free
+    region: oregon
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: transcript-agent-backend
+          property: host

@@ -11,6 +11,18 @@ import {
 } from '../types';
 
 export const getApiBase = (): string => {
+  let apiUrl = (import.meta as any).env?.VITE_API_URL;
+  if (apiUrl && typeof apiUrl === 'string' && apiUrl.trim()) {
+    apiUrl = apiUrl.trim();
+    if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
+      apiUrl = `https://${apiUrl}`;
+    }
+    apiUrl = apiUrl.replace(/\/+$/, '');
+    if (!apiUrl.endsWith('/api')) {
+      apiUrl = `${apiUrl}/api`;
+    }
+    return apiUrl;
+  }
   if (typeof window !== 'undefined') {
     return '/api';
   }
@@ -154,6 +166,31 @@ export const api = {
   // Quiz & Practice
   async getQuizQuestions(sessionId: string): Promise<QuizQuestion[]> {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/quiz`);
+    return res.json();
+  },
+
+  async generateQuizQuestions(sessionId: string): Promise<{ status: string; count: number; questions: QuizQuestion[] }> {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/quiz/generate`, {
+      method: 'POST',
+    });
+    return res.json();
+  },
+
+  async createCustomQuiz(
+    sessionId: string,
+    conceptName: string,
+    numQuestions: number,
+    difficulty: string = 'MEDIUM'
+  ): Promise<{ status: string; count: number; questions: QuizQuestion[] }> {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/quiz/custom`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        concept_name: conceptName,
+        num_questions: numQuestions,
+        difficulty: difficulty,
+      }),
+    });
     return res.json();
   },
 

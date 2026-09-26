@@ -29,9 +29,23 @@ export class SessionWebSocketClient {
       return;
     }
 
-    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = typeof window !== 'undefined' && window.location.host ? window.location.host : '127.0.0.1:8000';
-    const wsUrl = `${protocol}//${host}/ws/session/${this.sessionId}`;
+    let wsUrl: string;
+    let envApi = (import.meta as any).env?.VITE_WS_URL || (import.meta as any).env?.VITE_API_URL;
+    if (envApi && typeof envApi === 'string' && envApi.trim()) {
+      envApi = envApi.trim().replace(/\/api\/?$/, '');
+      if (envApi.startsWith('http://')) {
+        envApi = envApi.replace(/^http:\/\//, 'ws://');
+      } else if (envApi.startsWith('https://')) {
+        envApi = envApi.replace(/^https:\/\//, 'wss://');
+      } else if (!envApi.startsWith('ws://') && !envApi.startsWith('wss://')) {
+        envApi = `wss://${envApi}`;
+      }
+      wsUrl = `${envApi.replace(/\/+$/, '')}/ws/session/${this.sessionId}`;
+    } else {
+      const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = typeof window !== 'undefined' && window.location.host ? window.location.host : '127.0.0.1:8000';
+      wsUrl = `${protocol}//${host}/ws/session/${this.sessionId}`;
+    }
 
     try {
       this.socket = new WebSocket(wsUrl);

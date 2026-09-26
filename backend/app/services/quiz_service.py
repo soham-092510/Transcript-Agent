@@ -1,9 +1,11 @@
 import pymupdf as fitz
 import re
+import json
 import logging
 from typing import List, Dict, Any, Optional
 from backend.app.models.schemas import QuizQuestion
 from backend.app.db.database import DatabaseManager
+from backend.app.providers.llm_provider import llm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -93,48 +95,352 @@ class QuizPreparationService:
         return extracted_questions
 
     @classmethod
+    def is_contaminated_quiz(cls, session_id: str, questions: List[QuizQuestion]) -> bool:
+        """
+        Detects if a session has questions contaminated by the old hardcoded firewall fallback.
+        """
+        session = DatabaseManager.get_session(session_id)
+        if not session or not questions:
+            return False
+        title = session.title.lower()
+        # If the session is genuinely about network security or firewalls, it is not contaminated
+        if any(k in title for k in ["firewall", "fortinet", "cybersecurity", "nse2", "perimeter", "network security"]):
+            return False
+        # If the session is about something else (e.g. Pollution in India, TLS 1.3, React, Python),
+        # but contains the old fallback "What is the primary function of a network firewall?", it IS contaminated!
+        return any(
+            ("firewall" in q.question.lower() or q.concept_tested.lower() == "firewall")
+            for q in questions
+        )
+
+    @classmethod
     def generate_mock_questions_from_concepts(cls, session_id: str) -> List[QuizQuestion]:
+        """
+        Generates practice questions grounded strictly in the session's actual topic,
+        extracted concepts, and recent live transcript. Never falls back to hardcoded firewalls.
+        """
+        session = DatabaseManager.get_session(session_id)
+        topic = session.title if session else "Ongoing Concept"
         concepts = DatabaseManager.get_concepts(session_id)
-        questions = []
+        segments = DatabaseManager.get_transcript_segments(session_id)
+        questions: List[QuizQuestion] = []
+
         if not concepts:
-            # Default question
-            q = QuizQuestion(
+            # Generate questions dynamically from the session topic and latest transcript
+            latest_ts = segments[-1].timestamp_formatted if segments else "00:00"
+            q1 = QuizQuestion(
                 session_id=session_id,
-                question="What is the primary function of a network firewall?",
+                question=f"In this ongoing lecture on '{topic}', what is the primary architectural principle or objective being taught?",
                 options=[
-                    "Monitoring and controlling traffic according to predefined security rules",
-                    "Increasing internet broadband bandwidth and download speeds",
-                    "Replacing internal routers and DNS servers completely",
-                    "Encrypting hard drives against physical theft"
+                    f"Mastering the fundamental mechanisms, definitions, and operational rules of {topic}.",
+                    "Configuring legacy BIOS firmware and low-level storage controller drivers.",
+                    "Auditing third-party corporate billing records and software procurement invoices.",
+                    "Replacing all network routers with unmanaged physical switches."
                 ],
                 correct_option_index=0,
-                concept_tested="Firewall",
-                relevant_timestamp="14:32",
-                explanation="A firewall acts as a boundary inspecting packets and enforcing policy rules."
+                concept_tested=topic,
+                relevant_timestamp=latest_ts,
+                explanation=f"This ongoing lesson focuses on establishing a grounded understanding of {topic}."
             )
-            DatabaseManager.add_quiz_question(q)
-            questions.append(q)
+            DatabaseManager.add_quiz_question(q1)
+            questions.append(q1)
+
+            if segments:
+                q2 = QuizQuestion(
+                    session_id=session_id,
+                    question=f"Regarding the instructor's discussion at [{latest_ts}], which statement reflects the key lesson takeaway?",
+                    options=[
+                        f"The operational mechanisms presented in the ongoing lecture segment ({topic}).",
+                        "Ignoring instructor guidelines in favor of unverified manual settings.",
+                        "Disabling all system verification steps to minimize execution latency.",
+                        "Operating without predefined protocols or structured validation."
+                    ],
+                    correct_option_index=0,
+                    concept_tested=f"{topic} Mechanisms",
+                    relevant_timestamp=latest_ts,
+                    explanation=f"Reviewing the lecture segment at [{latest_ts}] reinforces the core principles of {topic}."
+                )
+                DatabaseManager.add_quiz_question(q2)
+                questions.append(q2)
+
             return questions
 
-        for c in concepts[:3]:
+        # If concepts exist, generate questions testing the ongoing concepts (prioritizing recent ones)
+        for c in concepts[:4]:
             q = QuizQuestion(
                 session_id=session_id,
-                question=f"Which of the following best defines '{c.name}' according to the lesson?",
+                question=f"According to the lecture on '{topic}', which of the following best defines '{c.name}'?",
                 options=[
-                    c.definition,
-                    f"A secondary protocol unrelated to {c.name}",
-                    "A legacy configuration that has been deprecated",
-                    "An automatic software patching tool"
+                    c.definition or c.simple_explanation or f"The core operational mechanism for {c.name}.",
+                    f"A secondary configuration unrelated to the core function of {c.name}.",
+                    f"A legacy protocol that has been completely deprecated in modern {topic}.",
+                    "An automatic hardware diagnostic tool for testing physical cabling."
                 ],
                 correct_option_index=0,
                 concept_tested=c.name,
-                relevant_timestamp=c.evidence_timestamp,
-                explanation=f"{c.name} is defined as: {c.definition}"
+                relevant_timestamp=c.evidence_timestamp or "Lesson Review",
+                explanation=f"In this lecture, '{c.name}' is defined as: {c.definition or c.simple_explanation}"
             )
             DatabaseManager.add_quiz_question(q)
             questions.append(q)
 
         return questions
+
+    @classmethod
+    async def generate_questions_for_session(cls, session_id: str, force_refresh: bool = False) -> List[QuizQuestion]:
+        """
+        Dynamically generates practice quiz questions for the ongoing lecture using LLM
+        grounded in the active concepts and live transcript, with reliable fallback.
+        """
+        existing = DatabaseManager.get_quiz_questions(session_id)
+        if not force_refresh and existing and not cls.is_contaminated_quiz(session_id, existing):
+            return existing
+
+        # Clear old / contaminated questions if regenerating
+        DatabaseManager.clear_quiz_questions(session_id)
+
+        session = DatabaseManager.get_session(session_id)
+        topic = session.title if session else "Ongoing Concept"
+        concepts = DatabaseManager.get_concepts(session_id)
+        segments = DatabaseManager.get_transcript_segments(session_id)
+
+        concepts_summary = ", ".join([f"{c.name}: {c.definition[:100]}" for c in concepts[:5]]) if concepts else "No specific sub-concepts extracted yet."
+        transcript_summary = " ".join([s.text for s in segments[-5:]]) if segments else "Lecture just started."
+
+        system_prompt = (
+            "You are an expert exam question creator. Generate 3 high-yield multiple-choice practice quiz questions "
+            "grounded strictly in what is being taught in this ongoing lecture. "
+            "Return only valid JSON in the exact schema specified."
+        )
+        prompt = f"""Generate 3 multiple-choice practice questions testing the student on what was taught in this ongoing lecture.
+Lecture Title / Topic: {topic}
+Concepts taught: {concepts_summary}
+Recent lecture transcript: {transcript_summary}
+
+Format your response as a strict JSON list with no markdown surrounding it, like this:
+[
+  {{
+    "question": "Question text here?",
+    "options": ["Correct answer", "Distractor 1", "Distractor 2", "Distractor 3"],
+    "correct_option_index": 0,
+    "concept_tested": "Specific concept name",
+    "explanation": "Why the correct answer is right based on the lesson."
+  }}
+]
+"""
+        try:
+            raw_response = await llm_provider.generate_response(
+                prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+                timeout=12.0
+            )
+            json_match = re.search(r'\[.*\]', raw_response, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group(0))
+                questions = []
+                for item in parsed:
+                    if isinstance(item, dict) and "question" in item and "options" in item and len(item["options"]) >= 2:
+                        q = QuizQuestion(
+                            session_id=session_id,
+                            question=item["question"],
+                            options=item["options"][:4],
+                            correct_option_index=item.get("correct_option_index", 0),
+                            concept_tested=item.get("concept_tested", topic),
+                            relevant_timestamp=segments[-1].timestamp_formatted if segments else "Lesson Review",
+                            explanation=item.get("explanation", f"Based on the lecture discussion on {topic}.")
+                        )
+                        DatabaseManager.add_quiz_question(q)
+                        questions.append(q)
+                if len(questions) >= 1:
+                    return questions
+        except Exception as e:
+            logger.warning(f"LLM quiz generation exception for {session_id}, falling back: {e}")
+
+        # Fallback to grounded mock generator
+        return cls.generate_mock_questions_from_concepts(session_id)
+
+    @classmethod
+    def _generate_fallback_custom_questions(
+        cls,
+        session_id: str,
+        concept_name: str,
+        needed_count: int,
+        start_index: int = 1,
+        difficulty: str = "MEDIUM"
+    ) -> List[QuizQuestion]:
+        templates = [
+            (
+                f"What is the primary defining principle or core objective of '{concept_name}'?",
+                [
+                    f"Providing a structured, deterministic approach to solve problems related to {concept_name}.",
+                    f"A temporary debug routine intended only for testing non-production systems.",
+                    f"A legacy protocol that has been phased out in modern architectural designs.",
+                    "An unverified manual override used exclusively for physical hardware maintenance."
+                ],
+                0,
+                f"Understanding the core definition and foundational role of {concept_name} is essential for exam readiness."
+            ),
+            (
+                f"In practical real-world applications, how is '{concept_name}' typically implemented or evaluated?",
+                [
+                    f"By enforcing strict operational criteria and modular interfaces tailored for {concept_name}.",
+                    "By bypassing all validation steps to prioritize short-term execution speed.",
+                    "By relying entirely on external unauthenticated network endpoints.",
+                    "By hardcoding static values without runtime adaptability."
+                ],
+                0,
+                f"Implementation of {concept_name} relies on systematic boundaries and standard validation best practices."
+            ),
+            (
+                f"Which of the following describes a common anti-pattern or critical pitfall when dealing with '{concept_name}'?",
+                [
+                    f"Failing to account for edge cases and architectural constraints specific to {concept_name}.",
+                    f"Adhering too strictly to validated documentation and best-practice blueprints.",
+                    "Maintaining comprehensive audit logs and automated sanity checks.",
+                    f"Applying modular abstractions to isolate {concept_name} from unrelated components."
+                ],
+                0,
+                f"A common pitfall with {concept_name} is overlooking architectural constraints or operating assumptions."
+            ),
+            (
+                f"What distinguishes '{concept_name}' from adjacent or alternative methodologies?",
+                [
+                    f"Its targeted capability to address domain requirements through specialized mechanisms.",
+                    "It requires no computational resources and operates without state.",
+                    "It is exclusively used for low-level mechanical equipment inspection.",
+                    "It has identical operational behavior to generic baseline tools with no differentiation."
+                ],
+                0,
+                f"{concept_name} provides unique domain capabilities tailored specifically for its use-case."
+            ),
+            (
+                f"When conducting an exam or technical assessment on '{concept_name}', what key criteria confirms mastery?",
+                [
+                    f"The ability to articulate its mechanics, trade-offs, and practical deployment considerations.",
+                    "Memorizing obscure hexadecimal memory registers without conceptual context.",
+                    "Assuming every implementation has identical resource costs and latency profiles.",
+                    "Relying on deprecated legacy patterns without understanding modern adaptations."
+                ],
+                0,
+                f"Mastery of {concept_name} requires understanding both its theoretical mechanics and practical trade-offs."
+            ),
+        ]
+
+        questions: List[QuizQuestion] = []
+        for i in range(needed_count):
+            idx = (start_index - 1 + i) % len(templates)
+            q_text, opts, c_idx, expl = templates[idx]
+            q_num = start_index + i
+            q = QuizQuestion(
+                session_id=session_id,
+                question=f"[{concept_name} Check #{q_num}] {q_text}",
+                options=opts,
+                correct_option_index=c_idx,
+                concept_tested=concept_name,
+                relevant_timestamp="Custom Quiz",
+                explanation=expl
+            )
+            questions.append(q)
+        return questions
+
+    @classmethod
+    async def generate_custom_quiz(
+        cls,
+        session_id: str,
+        concept_name: str,
+        count: int = 5,
+        difficulty: str = "MEDIUM"
+    ) -> List[QuizQuestion]:
+        """
+        Generates a custom quiz with a user-specified concept name and question count,
+        leveraging Ollama LLM with a robust grounded fallback generator.
+        """
+        target_count = max(1, min(int(count), 20))
+        concept_clean = concept_name.strip() if concept_name else "Core Lesson Concept"
+
+        session = DatabaseManager.get_session(session_id)
+        topic = session.title if session else concept_clean
+        segments = DatabaseManager.get_transcript_segments(session_id)
+        concepts = DatabaseManager.get_concepts(session_id)
+
+        matched_concept = next((c for c in concepts if c.name.lower() == concept_clean.lower()), None)
+        concept_context = f"Concept Details: {matched_concept.definition}" if matched_concept else ""
+        transcript_snippet = " ".join([s.text for s in segments[-8:]]) if segments else ""
+
+        system_prompt = (
+            "You are an expert exam designer and university professor. "
+            f"Generate exactly {target_count} rigorous, high-yield multiple-choice practice questions "
+            f"focusing specifically on the concept: '{concept_clean}'. "
+            f"Difficulty Level: {difficulty}. "
+            "Every question must have 4 plausible options and a detailed educational explanation of why the correct option is right. "
+            "Return only valid JSON in the exact schema specified."
+        )
+
+        prompt = f"""Generate exactly {target_count} multiple-choice practice questions testing understanding of '{concept_clean}'.
+Session Context: {topic}
+{concept_context}
+Relevant Lecture Transcript: {transcript_snippet}
+Target Difficulty: {difficulty}
+
+Format your response as a strict JSON list with no markdown surrounding it:
+[
+  {{
+    "question": "Clear and conceptual question testing {concept_clean}?",
+    "options": ["Correct answer", "Plausible distractor 1", "Plausible distractor 2", "Plausible distractor 3"],
+    "correct_option_index": 0,
+    "concept_tested": "{concept_clean}",
+    "explanation": "Detailed explanation of why the correct answer is right and why this concept matters."
+  }}
+]
+"""
+        generated_questions: List[QuizQuestion] = []
+        try:
+            raw_response = await llm_provider.generate_response(
+                prompt,
+                system_prompt=system_prompt,
+                temperature=0.3,
+                timeout=8.0
+            )
+            json_match = re.search(r'\[.*\]', raw_response, re.DOTALL)
+            if json_match:
+                parsed = json.loads(json_match.group(0))
+                for item in parsed:
+                    if isinstance(item, dict) and "question" in item and "options" in item and len(item["options"]) >= 2:
+                        q = QuizQuestion(
+                            session_id=session_id,
+                            question=item["question"],
+                            options=item["options"][:4],
+                            correct_option_index=item.get("correct_option_index", 0),
+                            concept_tested=item.get("concept_tested", concept_clean),
+                            relevant_timestamp=segments[-1].timestamp_formatted if segments else "Custom Quiz",
+                            explanation=item.get("explanation", f"Comprehensive explanation for {concept_clean}.")
+                        )
+                        generated_questions.append(q)
+                        if len(generated_questions) >= target_count:
+                            break
+        except Exception as e:
+            logger.warning(f"Ollama custom quiz generation exception for '{concept_clean}': {e}")
+
+        # If LLM didn't return enough questions (e.g. offline, timeout, or partial list),
+        # fill up to target_count using our dynamic domain question synthesizer
+        if len(generated_questions) < target_count:
+            needed = target_count - len(generated_questions)
+            fallback_qs = cls._generate_fallback_custom_questions(
+                session_id=session_id,
+                concept_name=concept_clean,
+                needed_count=needed,
+                start_index=len(generated_questions) + 1,
+                difficulty=difficulty
+            )
+            generated_questions.extend(fallback_qs)
+
+        # Clear existing questions for the session and save the new custom quiz
+        DatabaseManager.clear_quiz_questions(session_id)
+        for q in generated_questions:
+            DatabaseManager.add_quiz_question(q)
+
+        return generated_questions
 
     @classmethod
     def submit_practice_answer(cls, question_id: str, selected_option_index: int) -> Dict[str, Any]:

@@ -12,7 +12,7 @@ from backend.app.models.schemas import (
     LearningSession, CreateSessionRequest, UpdateSessionRequest,
     TranscriptSegment, FrameCapture, Concept, ChatMessage,
     ChatRequest, CommandRequest, PPTGenerateRequest, PDFGenerateRequest,
-    PinItemRequest, SystemStatusResponse, TaskState, TeacherMode
+    PinItemRequest, SystemStatusResponse, TaskState, TeacherMode, CustomQuizRequest
 )
 from backend.app.db.database import DatabaseManager, get_session_dir
 from backend.app.services.screenshot_service import screenshot_service
@@ -288,10 +288,22 @@ async def import_quiz(session_id: str, file: UploadFile = File(...)):
 
 @router.get("/sessions/{session_id}/quiz")
 async def get_quiz(session_id: str):
-    q_list = DatabaseManager.get_quiz_questions(session_id)
-    if not q_list:
-        q_list = quiz_service.generate_mock_questions_from_concepts(session_id)
-    return q_list
+    return await quiz_service.generate_questions_for_session(session_id, force_refresh=False)
+
+@router.post("/sessions/{session_id}/quiz/generate")
+async def generate_quiz(session_id: str):
+    questions = await quiz_service.generate_questions_for_session(session_id, force_refresh=True)
+    return {"status": "SUCCESS", "count": len(questions), "questions": questions}
+
+@router.post("/sessions/{session_id}/quiz/custom")
+async def create_custom_quiz(session_id: str, req: CustomQuizRequest):
+    questions = await quiz_service.generate_custom_quiz(
+        session_id=session_id,
+        concept_name=req.concept_name,
+        count=req.num_questions,
+        difficulty=req.difficulty or "MEDIUM"
+    )
+    return {"status": "SUCCESS", "count": len(questions), "questions": questions}
 
 @router.post("/quiz/{question_id}/submit")
 async def submit_quiz_answer(question_id: str, answer_data: dict):

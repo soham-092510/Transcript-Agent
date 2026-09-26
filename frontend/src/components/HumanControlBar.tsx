@@ -39,12 +39,12 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
       {/* LEFT: BRAND LOGO & TAGLINE MATCHING REFERENCE */}
       <div className="flex items-center gap-6">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00D9FF] to-[#8B5CF6] flex items-center justify-center shadow-neon-blue text-white">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-sky-500 to-slate-700 flex items-center justify-center shadow-metallic-subtle text-white border border-slate-600">
             <Video className="w-4 h-4 fill-white" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <h1 className="font-bold text-sm text-[#F0F9FF] tracking-tight">
+              <h1 className="font-bold text-sm text-slate-100 tracking-tight">
                 LearnLens AI
               </h1>
             </div>
@@ -59,7 +59,7 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
 
         {/* CENTER-LEFT: ACTIVE SESSION TITLE & SOURCE PILL */}
         <div className="hidden md:flex flex-col">
-          <h2 className="text-xs font-bold text-[#F0F9FF] truncate max-w-sm">
+          <h2 className="text-xs font-bold text-slate-100 truncate max-w-sm">
             {activeSession ? activeSession.title : 'Advanced Network Security (TLS 1.3)'}
           </h2>
           <div className="flex items-center gap-1.5 mt-0.5">
@@ -79,8 +79,8 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
         {/* Observational Status Indicator & Telemetry Checks */}
         <div className="flex items-center gap-4 text-xs font-medium">
           <div className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-[#00D9FF]'} animate-pulse shadow-neon-blue`} />
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${isPaused ? 'text-amber-400' : 'text-[#00D9FF]'}`}>
+            <span className={`w-2 h-2 rounded-full ${isPaused ? 'bg-amber-400' : 'bg-sky-400'} animate-pulse shadow-metallic-subtle`} />
+            <span className={`text-[10px] font-bold uppercase tracking-wider ${isPaused ? 'text-amber-400' : 'text-sky-400'}`}>
               {isPaused ? 'PAUSED' : 'OBSERVING'}
             </span>
             <span className="text-[11px] font-mono text-slate-400 ml-0.5">
@@ -91,15 +91,15 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
           <div className="hidden sm:flex items-center gap-3 text-[11px]">
             <span className="flex items-center gap-1 text-slate-300 font-medium">
               <span>Audio</span>
-              <Check className="w-3 h-3 text-[#00D9FF] stroke-[2.5]" />
+              <Check className="w-3 h-3 text-sky-400 stroke-[2.5]" />
             </span>
             <span className="flex items-center gap-1 text-slate-300 font-medium">
               <span>Vision</span>
-              <Check className="w-3 h-3 text-[#00D9FF] stroke-[2.5]" />
+              <Check className="w-3 h-3 text-sky-400 stroke-[2.5]" />
             </span>
             <span className="flex items-center gap-1 text-slate-300 font-medium">
               <span>RAG</span>
-              <Check className="w-3 h-3 text-[#00D9FF] stroke-[2.5]" />
+              <Check className="w-3 h-3 text-sky-400 stroke-[2.5]" />
             </span>
           </div>
         </div>
@@ -109,15 +109,15 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
           {isPaused ? (
             <button
               onClick={onResume}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan-400/40 text-slate-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 hover:border-slate-500 text-slate-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
             >
-              <Play className="w-3 h-3 fill-current text-[#00D9FF]" />
+              <Play className="w-3 h-3 fill-current text-sky-400" />
               <span>Resume</span>
             </button>
           ) : (
             <button
               onClick={onPause}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 hover:border-cyan-400/40 text-slate-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-800 hover:border-slate-500 text-slate-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
             >
               <Pause className="w-3 h-3 text-slate-300" />
               <span>Pause</span>
@@ -135,7 +135,7 @@ export const HumanControlBar: React.FC<HumanControlBarProps> = ({
 
         {/* User Profile Avatar matching reference image */}
         <div className="flex items-center pl-1 border-l border-white/10">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#00D9FF] to-[#8B5CF6] text-white flex items-center justify-center font-bold text-xs shadow-neon-purple border border-white/20 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-sky-600 to-slate-700 text-white flex items-center justify-center font-bold text-xs shadow-metallic-subtle border border-slate-600 overflow-hidden">
             <span className="text-sm">🧔</span>
           </div>
         </div>

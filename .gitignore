@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
@@ -48,6 +48,8 @@ data/sessions/*
 !data/sessions/demo_cybersecurity_module_2/**
 data/sessions/demo_cybersecurity_module_2/exports/*.pdf
 data/sessions/demo_cybersecurity_module_2/exports/*.pptx
+data/sessions/demo_cybersecurity_module_2/screenshots/thumb_*.jpg
+data/sessions/demo_cybersecurity_module_2/screenshots/frame_*.jpg
 
 # Database
 data/learnlens.db-journal

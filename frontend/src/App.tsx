@@ -425,6 +425,22 @@ export function App() {
     }
   };
 
+  const handleGenerateOngoingQuiz = async () => {
+    if (!activeSession) return;
+    const res = await api.generateQuizQuestions(activeSession.id);
+    if (res && res.questions) {
+      setQuizQuestions(res.questions);
+    }
+  };
+
+  const handleCreateCustomQuiz = async (conceptName: string, numQuestions: number, difficulty: string) => {
+    if (!activeSession) return;
+    const res = await api.createCustomQuiz(activeSession.id, conceptName, numQuestions, difficulty);
+    if (res && res.questions) {
+      setQuizQuestions(res.questions);
+    }
+  };
+
   // Offline video import
   const handleVideoFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -594,8 +610,11 @@ export function App() {
               <QuizPracticeModal
                 session={activeSession}
                 questions={quizQuestions}
+                concepts={concepts}
                 onSubmitAnswer={handleSubmitQuizAnswer}
                 onImportPdf={handleImportQuizPdf}
+                onGenerateOngoingQuiz={handleGenerateOngoingQuiz}
+                onCreateCustomQuiz={handleCreateCustomQuiz}
                 onTeachConcept={(cName) => {
                   handleSendMessage(`Teach me the concept of ${cName} tested in the practice quiz`, 'simple');
                   setCurrentTab('chat');
@@ -617,19 +636,19 @@ export function App() {
         ) : isLoadingInitial ? (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-transparent">
             <div className="relative mb-6">
-              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-400/30 flex items-center justify-center text-[#00D9FF] shadow-neon-blue animate-pulse">
-                <GraduationCap className="w-8 h-8 text-[#00D9FF]" />
+              <div className="w-16 h-16 rounded-2xl bg-slate-800 border border-slate-700 flex items-center justify-center text-sky-400 shadow-metallic-subtle animate-pulse">
+                <GraduationCap className="w-8 h-8 text-sky-400" />
               </div>
-              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#12122B] border border-cyan-400/30 flex items-center justify-center shadow-xs">
-                <Loader2 className="w-3.5 h-3.5 text-[#00D9FF] animate-spin" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center shadow-xs">
+                <Loader2 className="w-3.5 h-3.5 text-sky-400 animate-spin" />
               </div>
             </div>
-            <h2 className="text-base font-bold text-[#F0F9FF] tracking-tight">Connecting to LearnLens AI Engine</h2>
+            <h2 className="text-base font-bold text-slate-100 tracking-tight">Connecting to LearnLens AI Engine</h2>
             <p className="text-xs text-slate-400 mt-1 max-w-sm">
               Initializing local multimodal observation pipeline, SQLite knowledge base, and AI teacher studio...
             </p>
             <div className="mt-5 flex items-center gap-2 text-[11px] text-slate-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-[#00D9FF] animate-ping" />
+              <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
               <span>Local-first • Zero cloud telemetry • 100% Private</span>
             </div>
           </div>
@@ -638,36 +657,36 @@ export function App() {
             <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center text-rose-400 mb-4 shadow-sm">
               <AlertCircle className="w-8 h-8 text-rose-400" />
             </div>
-            <h2 className="text-base font-bold text-[#F0F9FF]">Cannot Connect to LearnLens Backend</h2>
+            <h2 className="text-base font-bold text-slate-100">Cannot Connect to LearnLens Backend</h2>
             <p className="text-xs text-slate-400 mt-1.5 max-w-md">
               {connectionError}
             </p>
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={() => loadInitialData(5, 1000)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl neon-glow-btn text-white text-xs font-semibold shadow-neon-blue transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl metallic-accent-btn text-white text-xs font-semibold shadow-metallic-subtle transition-colors cursor-pointer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Retry Connection
               </button>
               <button
                 onClick={handleLoadDemo}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl glass-panel text-slate-200 hover:text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 rounded-xl metallic-btn text-slate-200 hover:text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#00D9FF]" />
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
                 Load Demo Session
               </button>
             </div>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto bg-transparent p-8 flex flex-col items-center justify-center">
-            <div className="max-w-xl w-full glass-panel rounded-3xl border border-white/10 shadow-2xl p-8 text-center space-y-6">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-[#00D9FF]/20 to-[#8B5CF6]/20 border border-cyan-400/30 text-[#00D9FF] mx-auto flex items-center justify-center shadow-neon-blue">
-                <GraduationCap className="w-7 h-7 text-[#00D9FF]" />
+            <div className="max-w-xl w-full metallic-panel rounded-3xl border border-slate-700/80 shadow-2xl p-8 text-center space-y-6">
+              <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-slate-700 text-sky-400 mx-auto flex items-center justify-center shadow-metallic-subtle">
+                <GraduationCap className="w-7 h-7 text-sky-400" />
               </div>
 
               <div className="space-y-2">
-                <h2 className="text-xl font-bold text-[#F0F9FF] tracking-tight">
+                <h2 className="text-xl font-bold text-slate-100 tracking-tight">
                   Welcome to LearnLens AI Studio
                 </h2>
                 <p className="text-xs text-slate-400 leading-relaxed max-w-md mx-auto">
@@ -678,7 +697,7 @@ export function App() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
                 <button
                   onClick={() => setAutoModalOpen(true)}
-                  className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/15 hover:border-amber-400 transition-all cursor-pointer group text-left backdrop-blur-md"
+                  className="p-4 rounded-xl border border-amber-500/30 bg-slate-900/60 hover:bg-slate-850 hover:border-amber-400 transition-all cursor-pointer group text-left backdrop-blur-md"
                 >
                   <div className="flex items-center gap-2 mb-1.5">
                     <Zap className="w-4 h-4 text-amber-400 fill-current" />
@@ -691,11 +710,11 @@ export function App() {
 
                 <button
                   onClick={handleLoadDemo}
-                  className="p-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/15 hover:border-cyan-400 hover:shadow-neon-blue transition-all cursor-pointer group text-left backdrop-blur-md"
+                  className="p-4 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-850 hover:border-sky-400 hover:shadow-metallic-subtle transition-all cursor-pointer group text-left backdrop-blur-md"
                 >
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Sparkles className="w-4 h-4 text-[#00D9FF]" />
-                    <span className="text-xs font-bold text-[#00D9FF]">Explore Demo Course</span>
+                    <Sparkles className="w-4 h-4 text-sky-400" />
+                    <span className="text-xs font-bold text-slate-200 group-hover:text-sky-300">Explore Demo Course</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-snug">
                     Pre-loaded with 7-concept MIT lecture, slide captures, and interactive exam quiz.
@@ -704,11 +723,11 @@ export function App() {
 
                 <button
                   onClick={() => setStartModalOpen(true)}
-                  className="p-4 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/15 hover:border-purple-400 hover:shadow-neon-purple transition-all cursor-pointer group text-left backdrop-blur-md"
+                  className="p-4 rounded-xl border border-slate-700 bg-slate-900/60 hover:bg-slate-850 hover:border-slate-500 hover:shadow-metallic-subtle transition-all cursor-pointer group text-left backdrop-blur-md"
                 >
                   <div className="flex items-center gap-2 mb-1.5">
-                    <Radio className="w-4 h-4 text-[#C084FC]" />
-                    <span className="text-xs font-bold text-[#C084FC]">Start Chrome Observation</span>
+                    <Radio className="w-4 h-4 text-slate-300" />
+                    <span className="text-xs font-bold text-slate-200 group-hover:text-slate-100">Start Chrome Observation</span>
                   </div>
                   <p className="text-[11px] text-slate-300 leading-snug">
                     Authorize any browser tab (YouTube, Coursera, Udemy, etc.) for live AI capture.
@@ -716,7 +735,7 @@ export function App() {
                 </button>
               </div>
 
-              <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
                 <span>Local SQLite Knowledge Base</span>
                 <span>12 Interactive Teacher Modes</span>
                 <span>Export 16:9 Slide PPTX & PDF</span>

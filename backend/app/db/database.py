@@ -628,6 +628,15 @@ class DatabaseManager:
         ]
 
     @staticmethod
+    def clear_quiz_questions(session_id: str):
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM quiz_questions WHERE session_id = ?", (session_id,))
+        cursor.execute("UPDATE sessions SET question_count = 0 WHERE id = ?", (session_id,))
+        conn.commit()
+        conn.close()
+
+    @staticmethod
     def get_learner_profile(session_id: str) -> LearnerProfile:
         conn = get_db_connection()
         cursor = conn.cursor()

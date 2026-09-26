@@ -192,6 +192,11 @@ class PinItemRequest(BaseModel):
     item_id: str
     is_pinned: bool = True
 
+class CustomQuizRequest(BaseModel):
+    concept_name: str
+    num_questions: int = Field(default=5, ge=1, le=20)
+    difficulty: Optional[str] = "MEDIUM"
+
 class SystemStatusResponse(BaseModel):
     ollama_connected: bool
     ollama_models: List[str] = []

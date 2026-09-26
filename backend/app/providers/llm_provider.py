@@ -415,16 +415,47 @@ class LocalOllamaLLMProvider(LLMProvider):
                     "\n\n*In parliamentary systems like Germany and India, the head of government holds executive power, while ceremonial or constitutional duties rest with the President or Monarch.*"
                 )
 
-        # Default SIMPLE mode / TEACH_FROM_SCRATCH / ASK_ANYTHING
+        # Enhanced Educational Explanation (Readable, Detailed, Paragraphs + Bullets)
+        # 1. Executive Summary Paragraph
+        explanation_intro = (
+            f"**{clean_q}** represents a fundamental subject of study. "
+            f"At its core, understanding this topic provides the structural foundation needed to analyze how systems, "
+            f"processes, and real-world mechanisms operate predictably under varying conditions. Rather than merely memorizing "
+            f"surface definitions, the key is understanding how each underlying component interacts to produce consistent results."
+        )
+
+        # 2. Detailed Bullet Points
+        core_bullet_points = [
+            f"• **Foundational Principle**: `{clean_q}` establishes the operational baseline and governing rules required for systematic execution.",
+            f"• **Underlying Mechanism**: It systematically ingests inputs, validates constraints against predefined specifications, and transitions between discrete operational states.",
+            f"• **Modularity & Scalability**: Decomposing the problem space into discrete sub-components ensures maintainability, error isolation, and predictable behavior.",
+            f"• **Real-World Impact**: Whether in production engineering, academic examinations, or industrial deployments, this concept serves as a cornerstone for reliable problem-solving."
+        ]
+
+        # 3. Practical Example / Walkthrough
+        practical_walkthrough = (
+            f"**Practical Real-World Context:**\n"
+            f"In practical applications, consider how an enterprise architecture manages data flow: every request must be authenticated, "
+            f"routed through the appropriate subsystem, and logged for auditing. Similarly, `{clean_q}` ensures that each phase "
+            f"is executed systematically without unintended side-effects."
+        )
+
+        # 4. Key Takeaways
+        takeaways = (
+            f"**Key Takeaways:**\n"
+            f"1. Focus first on the primary purpose and causal relationships before delving into micro-optimizations.\n"
+            f"2. Always account for boundary constraints, input validation, and edge-case exceptions.\n"
+            f"3. Practical mastery comes from tracing the complete lifecycle from initial setup to final output."
+        )
+
         return (
-            f"### 🌱 Educational Overview: {clean_q}\n\n"
-            f"**Core Summary:**\n"
-            f"Here is a clear, direct explanation regarding **{clean_q}**:\n\n"
-            f"• **Fundamental Meaning**: Understand the core definitions and operational principles behind this topic.\n"
-            f"• **Key Mechanisms**: Break down how each component interacts, from initial inputs to predictable outputs.\n"
-            f"• **Practical Application**: This concept appears across real-world systems, exams, and technical interviews.\n\n"
-            + (f"**Lesson Material Connection:**\n{session_evidence}\n\n" if session_evidence else "") +
-            f"> 💡 **Teacher's Tip**: If you'd like to explore this in code, exam format, or practical flashcards, simply switch the Tutor Mode above!"
+            f"### 📘 Comprehensive Guide: {clean_q}\n\n"
+            f"{explanation_intro}\n\n"
+            f"**Core Mechanisms & Architecture:**\n"
+            + "\n".join(core_bullet_points) + "\n\n"
+            + (f"**Grounded Lecture Evidence:**\n{session_evidence}\n\n" if session_evidence else "")
+            + f"{practical_walkthrough}\n\n"
+            + f"{takeaways}"
         )
 
     def _extract_key_sentences(self, text: str) -> str:
