@@ -61,13 +61,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-56 bg-white border-r border-slate-200/80 flex flex-col h-screen select-none shrink-0 z-30 shadow-xs">
+    <aside className="w-56 bg-slate-900/60 backdrop-blur-xl border-r border-white/10 flex flex-col h-screen select-none shrink-0 z-30 shadow-2xl">
       
       {/* Top "+ New Workspace" Action Button */}
       <div className="p-3.5 pb-2">
         <button
           onClick={onStartLearning}
-          className="w-full py-2 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-blue-600/20 transition-all transform active:scale-95 cursor-pointer"
+          className="w-full py-2 px-3.5 rounded-xl bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] hover:from-[#0EA5E9] hover:to-[#A855F7] text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-neon-blue transition-all transform active:scale-95 cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
           <span>New Workspace</span>
@@ -135,7 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* RECENT SECTION */}
-        <div className="space-y-1 pt-2 border-t border-slate-100">
+        <div className="space-y-1 pt-2 border-t border-white/10">
           <p className="px-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
             RECENT
           </p>
@@ -149,12 +149,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClick={() => onSelectSession(sess)}
                   className={`group flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs cursor-pointer transition-colors ${
                     isSelected
-                      ? 'bg-blue-50/70 text-blue-700 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-white/10 text-[#00D9FF] font-semibold border border-cyan-500/30 shadow-neon-blue'
+                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0 pr-1">
-                    <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <FileText className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-[#00D9FF]' : 'text-slate-500'}`} />
                     <span className="truncate text-[11px]">{sess.title}</span>
                   </div>
                   {sess.id !== 'demo1' && (
@@ -164,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onDeleteSession(sess.id);
                       }}
                       title="Delete"
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-300 hover:text-red-500 transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-slate-500 hover:text-rose-400 transition-opacity"
                     >
                       <Trash2 className="w-3 h-3" />
                     </button>
@@ -177,33 +177,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Information Cards Matching Reference Image */}
-      <div className="p-3 border-t border-slate-100 space-y-2.5 bg-white shrink-0">
+      <div className="p-3 border-t border-white/10 space-y-2.5 bg-transparent shrink-0">
         {/* Today's Learning Card */}
-        <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 space-y-1.5">
-          <div className="flex items-center justify-between text-[10px] font-bold text-slate-500">
+        <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
+          <div className="flex items-center justify-between text-[10px] font-bold text-slate-400">
             <span>Today's Learning</span>
-            <span className="text-slate-800 font-mono">3h 42m</span>
+            <span className="text-slate-200 font-mono">3h 42m</span>
           </div>
-          {/* Soft Blue Progress Bar */}
-          <div className="w-full bg-slate-200/70 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-blue-600 h-full w-[65%] rounded-full" />
+          {/* Neon Gradient Progress Bar */}
+          <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+            <div className="bg-gradient-to-r from-[#00D9FF] to-[#8B5CF6] h-full w-[65%] rounded-full shadow-neon-blue" />
           </div>
         </div>
 
         {/* Upgrade / Better Learning with AI Card */}
         <button
           onClick={onLoadDemo}
-          className="w-full p-2.5 rounded-xl bg-gradient-to-r from-blue-50/60 to-indigo-50/60 border border-blue-200/60 hover:border-blue-300 flex items-center justify-between text-left transition-all group cursor-pointer shadow-2xs"
+          className="w-full p-2.5 rounded-xl bg-gradient-to-r from-cyan-950/40 to-purple-950/40 border border-purple-500/30 hover:border-cyan-400/50 flex items-center justify-between text-left transition-all group cursor-pointer shadow-neon-blue"
         >
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#00D9FF] to-[#8B5CF6] text-white flex items-center justify-center shrink-0 shadow-neon-blue">
               <Sparkles className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
+            <span className="text-xs font-bold text-slate-200 group-hover:text-[#00D9FF] transition-colors">
               Better learning with AI
             </span>
           </div>
-          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-600 transition-transform group-hover:translate-x-0.5" />
+          <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#00D9FF] transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>
     </aside>
@@ -221,16 +221,16 @@ const SidebarNavItem: React.FC<{
     onClick={onClick}
     className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
       active
-        ? 'bg-blue-50 text-blue-600 font-bold'
-        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 font-medium'
+        ? 'bg-white/10 text-[#00D9FF] font-bold border border-cyan-500/30 shadow-neon-blue'
+        : 'text-slate-400 hover:text-white hover:bg-white/5 font-medium'
     }`}
   >
-    <div className={`shrink-0 ${active ? 'text-blue-600' : 'text-slate-500'}`}>
+    <div className={`shrink-0 ${active ? 'text-[#00D9FF]' : 'text-slate-400'}`}>
       {icon}
     </div>
     <span className="truncate text-[11px]">{label}</span>
     {isLiveDot && active && (
-      <span className="w-1.5 h-1.5 rounded-full bg-blue-600 ml-auto shrink-0 animate-pulse" />
+      <span className="w-1.5 h-1.5 rounded-full bg-[#00D9FF] ml-auto shrink-0 animate-pulse shadow-neon-blue" />
     )}
   </button>
 );
