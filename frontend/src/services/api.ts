@@ -10,23 +10,58 @@ import {
   TeacherMode
 } from '../types';
 
-export const getApiBase = (): string => {
-  let apiUrl = (import.meta as any).env?.VITE_API_URL;
-  if (apiUrl && typeof apiUrl === 'string' && apiUrl.trim()) {
-    apiUrl = apiUrl.trim();
-    if (!apiUrl.startsWith('http://') && !apiUrl.startsWith('https://')) {
-      apiUrl = `https://${apiUrl}`;
-    }
-    apiUrl = apiUrl.replace(/\/+$/, '');
-    if (!apiUrl.endsWith('/api')) {
-      apiUrl = `${apiUrl}/api`;
-    }
-    return apiUrl;
+const formatApiUrl = (raw: string): string => {
+  let url = raw.trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    url = `https://${url}`;
   }
+  url = url.replace(/\/+$/, '');
+  if (!url.endsWith('/api')) {
+    url = `${url}/api`;
+  }
+  return url;
+};
+
+export const getApiBase = (): string => {
+  // 1. Check custom localStorage override
+  if (typeof window !== 'undefined') {
+    const saved = window.localStorage.getItem('LEARNLENS_BACKEND_URL');
+    if (saved && saved.trim()) {
+      return formatApiUrl(saved.trim());
+    }
+  }
+
+  // 2. Direct static build-time environment variable (must be written verbatim for Vite)
+  const buildTimeUrl = import.meta.env.VITE_API_URL;
+  if (buildTimeUrl && typeof buildTimeUrl === 'string' && buildTimeUrl.trim()) {
+    return formatApiUrl(buildTimeUrl.trim());
+  }
+
+  // 3. Render cloud auto-detection: if hosted on *.onrender.com, route to matching -backend service
+  if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
+    const host = window.location.hostname;
+    // e.g. transcript-agent-frontend.onrender.com -> transcript-agent-backend.onrender.com
+    const backendHost = host.replace(/-frontend(\.[^.]+)?\.onrender\.com/, '-backend$1.onrender.com');
+    if (backendHost !== host) {
+      return `https://${backendHost}/api`;
+    }
+  }
+
+  // 4. Default for local development with Vite dev server proxy
   if (typeof window !== 'undefined') {
     return '/api';
   }
   return 'http://127.0.0.1:8000/api';
+};
+
+export const setBackendUrl = (url: string) => {
+  if (typeof window !== 'undefined') {
+    if (!url || !url.trim()) {
+      window.localStorage.removeItem('LEARNLENS_BACKEND_URL');
+    } else {
+      window.localStorage.setItem('LEARNLENS_BACKEND_URL', url.trim());
+    }
+  }
 };
 
 export const API_BASE = getApiBase();

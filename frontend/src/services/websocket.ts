@@ -30,18 +30,32 @@ export class SessionWebSocketClient {
     }
 
     let wsUrl: string;
-    let envApi = (import.meta as any).env?.VITE_WS_URL || (import.meta as any).env?.VITE_API_URL;
-    if (envApi && typeof envApi === 'string' && envApi.trim()) {
-      envApi = envApi.trim().replace(/\/api\/?$/, '');
-      if (envApi.startsWith('http://')) {
-        envApi = envApi.replace(/^http:\/\//, 'ws://');
-      } else if (envApi.startsWith('https://')) {
-        envApi = envApi.replace(/^https:\/\//, 'wss://');
-      } else if (!envApi.startsWith('ws://') && !envApi.startsWith('wss://')) {
-        envApi = `wss://${envApi}`;
-      }
-      wsUrl = `${envApi.replace(/\/+$/, '')}/ws/session/${this.sessionId}`;
-    } else {
+
+    // 1. Check custom localStorage override
+    const savedBackend = typeof window !== 'undefined' ? window.localStorage.getItem('LEARNLENS_BACKEND_URL') : null;
+    if (savedBackend && savedBackend.trim()) {
+      let base = savedBackend.trim().replace(/\/api\/?$/, '');
+      if (base.startsWith('http://')) base = base.replace(/^http:\/\//, 'ws://');
+      else if (base.startsWith('https://')) base = base.replace(/^https:\/\//, 'wss://');
+      else if (!base.startsWith('ws://') && !base.startsWith('wss://')) base = `wss://${base}`;
+      wsUrl = `${base.replace(/\/+$/, '')}/ws/session/${this.sessionId}`;
+    }
+    // 2. Direct static build-time environment variables
+    else if (import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL) {
+      let base = (import.meta.env.VITE_WS_URL || import.meta.env.VITE_API_URL || '').trim().replace(/\/api\/?$/, '');
+      if (base.startsWith('http://')) base = base.replace(/^http:\/\//, 'ws://');
+      else if (base.startsWith('https://')) base = base.replace(/^https:\/\//, 'wss://');
+      else if (!base.startsWith('ws://') && !base.startsWith('wss://')) base = `wss://${base}`;
+      wsUrl = `${base.replace(/\/+$/, '')}/ws/session/${this.sessionId}`;
+    }
+    // 3. Render cloud auto-detection
+    else if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
+      const host = window.location.hostname;
+      const backendHost = host.replace(/-frontend(\.[^.]+)?\.onrender\.com/, '-backend$1.onrender.com');
+      wsUrl = `wss://${backendHost}/ws/session/${this.sessionId}`;
+    }
+    // 4. Local dev / same-origin fallback
+    else {
       const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = typeof window !== 'undefined' && window.location.host ? window.location.host : '127.0.0.1:8000';
       wsUrl = `${protocol}//${host}/ws/session/${this.sessionId}`;
