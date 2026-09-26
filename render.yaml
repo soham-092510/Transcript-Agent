@@ -11,6 +11,7 @@ services:
     runtime: python
     plan: free
     region: oregon
+    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
     healthCheckPath: /api/system/status
@@ -36,6 +37,7 @@ services:
   - type: web
     name: transcript-agent-frontend
     runtime: static
+    autoDeploy: true
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     routes:
