@@ -31,8 +31,8 @@ class Settings:
     FAST_MODE: bool = os.getenv("FAST_MODE", "true").lower() in ("true", "1")
     IS_CLOUD: bool = bool(os.getenv("RENDER"))
     ENABLE_LIVE_VLM: bool = os.getenv("ENABLE_LIVE_VLM", "false").lower() in ("true", "1")
-    # On Render/cloud free tier (0.1 CPU), server Whisper causes 100% CPU lockup. Web Speech API handles client transcription.
-    ENABLE_LIVE_WHISPER: bool = os.getenv("ENABLE_LIVE_WHISPER", "false" if os.getenv("RENDER") else "true").lower() in ("true", "1")
+    # Thread-capped (cpu_threads=1) live Whisper for lecture tab audio streaming
+    ENABLE_LIVE_WHISPER: bool = os.getenv("ENABLE_LIVE_WHISPER", "true").lower() in ("true", "1")
     OLLAMA_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_TIMEOUT_SEC", "15.0"))
     OLLAMA_CONNECT_TIMEOUT_SEC: float = float(os.getenv("OLLAMA_CONNECT_TIMEOUT_SEC", "1.5"))
     MODEL_CHECK_CACHE_TTL_SEC: float = 120.0

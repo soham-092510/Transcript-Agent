@@ -150,6 +150,15 @@ def init_db():
     )
     """)
 
+    # Performance Indexes for sub-millisecond lookups
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcript_session ON transcript_segments (session_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_transcript_time ON transcript_segments (session_id, timestamp_start);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_frames_session ON frames (session_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_frames_time ON frames (session_id, timestamp_sec);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_concepts_session ON concepts (session_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages (session_id);")
+    cursor.execute("CREATE INDEX IF NOT EXISTS idx_quiz_session ON quiz_questions (session_id);")
+
     # Path Portability Migration:
     # If frames have Windows-specific paths like 'C:\Users\...' or backslashes,
     # normalize them to clean portable paths relative to sessions directory.

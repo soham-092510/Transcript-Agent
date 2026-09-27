@@ -13,7 +13,7 @@ import {
   Zap
 } from 'lucide-react';
 import { LearningSession } from '../types';
-import { api } from '../services/api';
+import { api, getExportDownloadUrl } from '../services/api';
 
 interface StudyArtifactsProps {
   session: LearningSession;
@@ -55,7 +55,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
     setIsGeneratingSlideOnlyPdf(true);
     try {
       const res = await api.exportSlideOnlyPdf(session.id);
-      if (res && res.download_url) setLastSlideOnlyPdfUrl(res.download_url);
+      if (res && res.download_url) setLastSlideOnlyPdfUrl(getExportDownloadUrl(res.download_url));
     } finally {
       setIsGeneratingSlideOnlyPdf(false);
     }
@@ -65,7 +65,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
     setIsGeneratingSlideOnlyPptx(true);
     try {
       const res = await api.exportSlideOnlyPptx(session.id);
-      if (res && res.download_url) setLastSlideOnlyPptxUrl(res.download_url);
+      if (res && res.download_url) setLastSlideOnlyPptxUrl(getExportDownloadUrl(res.download_url));
     } finally {
       setIsGeneratingSlideOnlyPptx(false);
     }
@@ -75,8 +75,8 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
     setIsGeneratingPPT(true);
     try {
       const res = await onGeneratePPT(selectedPptStyle, slideCount);
-      if (res) {
-        setLastPPTUrl(res.download_url);
+      if (res && res.download_url) {
+        setLastPPTUrl(getExportDownloadUrl(res.download_url));
       }
     } finally {
       setIsGeneratingPPT(false);
@@ -88,7 +88,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
       setIsGeneratingPDFReport(true);
       try {
         const res = await onGeneratePDF('teaching_report');
-        if (res) setLastPDFReportUrl(res.download_url);
+        if (res && res.download_url) setLastPDFReportUrl(getExportDownloadUrl(res.download_url));
       } finally {
         setIsGeneratingPDFReport(false);
       }
@@ -96,7 +96,7 @@ export const StudyArtifacts: React.FC<StudyArtifactsProps> = ({
       setIsGeneratingVisualPack(true);
       try {
         const res = await onGeneratePDF('visual_pack');
-        if (res) setLastVisualPackUrl(res.download_url);
+        if (res && res.download_url) setLastVisualPackUrl(getExportDownloadUrl(res.download_url));
       } finally {
         setIsGeneratingVisualPack(false);
       }

@@ -173,46 +173,44 @@ class ScreenshotIntelligenceService:
             logger.error(f"Error processing frame: {e}", exc_info=True)
             return None
 
-    _is_enriching: bool = False
+    _enrich_semaphore: Optional[asyncio.Semaphore] = None
 
     @classmethod
     async def _enrich_frame_async(cls, session_id: str, frame_id: str, img_path: str, formatted_time: str):
         """Non-blocking background worker that enriches frame with OCR text and deep concepts."""
-        if cls._is_enriching:
-            return
-        cls._is_enriching = True
-        try:
-            from backend.app.services.knowledge_service import knowledge_service
-            ocr_text = await ocr_provider.extract_text(img_path)
-            updates: Dict[str, Any] = {}
-            if ocr_text:
-                updates["ocr_text"] = ocr_text
-                if len(ocr_text) > settings.MIN_OCR_CHARS_SIGNIFICANT:
-                    updates["importance_score"] = 0.85
+        if cls._enrich_semaphore is None:
+            cls._enrich_semaphore = asyncio.Semaphore(2)
+        async with cls._enrich_semaphore:
+            try:
+                from backend.app.services.knowledge_service import knowledge_service
+                ocr_text = await ocr_provider.extract_text(img_path)
+                updates: Dict[str, Any] = {}
+                if ocr_text:
+                    updates["ocr_text"] = ocr_text
+                    if len(ocr_text) > settings.MIN_OCR_CHARS_SIGNIFICANT:
+                        updates["importance_score"] = 0.85
 
-            if settings.ENABLE_LIVE_VLM:
-                try:
-                    vlm_res = await vlm_provider.analyze_image(img_path)
-                    if vlm_res:
-                        updates["category"] = vlm_res.get("category", VisualCategory.SLIDE).value
-                        updates["visual_description"] = vlm_res.get("visual_description", "")
-                except Exception as vlm_err:
-                    logger.debug(f"Live VLM background error: {vlm_err}")
+                if settings.ENABLE_LIVE_VLM:
+                    try:
+                        vlm_res = await vlm_provider.analyze_image(img_path)
+                        if vlm_res:
+                            updates["category"] = vlm_res.get("category", VisualCategory.SLIDE).value
+                            updates["visual_description"] = vlm_res.get("visual_description", "")
+                    except Exception as vlm_err:
+                        logger.debug(f"Live VLM background error: {vlm_err}")
 
-            if updates:
-                DatabaseManager.update_frame_metadata(frame_id, updates)
+                if updates:
+                    DatabaseManager.update_frame_metadata(frame_id, updates)
 
-            # Extract concepts if significant OCR text is discovered
-            if ocr_text and len(ocr_text.strip()) > 15:
-                await knowledge_service.extract_knowledge_from_chunk(
-                    session_id=session_id,
-                    transcript_text=f"Slide Title/Notes: {ocr_text}",
-                    timestamp_formatted=formatted_time
-                )
-        except Exception as e:
-            logger.debug(f"Background frame enrichment note: {e}")
-        finally:
-            cls._is_enriching = False
+                # Extract concepts if significant OCR text is discovered
+                if ocr_text and len(ocr_text.strip()) > 15:
+                    await knowledge_service.extract_knowledge_from_chunk(
+                        session_id=session_id,
+                        transcript_text=f"Slide Title/Notes: {ocr_text}",
+                        timestamp_formatted=formatted_time
+                    )
+            except Exception as e:
+                logger.debug(f"Background frame enrichment note: {e}")
 
     @staticmethod
     def format_timestamp(sec: float) -> str:

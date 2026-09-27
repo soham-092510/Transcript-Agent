@@ -17,7 +17,7 @@ class LocalWhisperTranscriptionProvider(TranscriptionProvider):
             try:
                 from faster_whisper import WhisperModel
                 logger.info(f"Loading faster-whisper model ({self.model_size})...")
-                self._model = WhisperModel(self.model_size, device="cpu", compute_type="int8")
+                self._model = WhisperModel(self.model_size, device="cpu", compute_type="int8", cpu_threads=1, num_workers=1)
             except Exception as e:
                 logger.warning(f"faster-whisper not available: {e}. Transcripts will be received from stream.")
             self._checked = True

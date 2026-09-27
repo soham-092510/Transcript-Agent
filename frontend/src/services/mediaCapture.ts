@@ -55,16 +55,21 @@ export class BrowserMediaCaptureManager {
   private micStream: MediaStream | null = null;
   private videoElement: HTMLVideoElement | null = null;
   private canvasElement: HTMLCanvasElement | null = null;
+  private diffCanvas: HTMLCanvasElement | null = null;
+  private prevThumbData: Uint8Array | null = null;
   private workerTimer: BackgroundWorkerTimer = new BackgroundWorkerTimer();
   private fallbackIntervalId: any = null;
   private startTime: number = 0;
   private recognition: any = null;
+  private recognitionRestartTimer: any = null;
+  private lastWebSpeechTime: number = 0;
   private callbacks: CaptureCallbacks | null = null;
   private speechDenied: boolean = false;
   private mediaRecorder: MediaRecorder | null = null;
   private audioContext: AudioContext | null = null;
   private audioProcessor: ScriptProcessorNode | null = null;
   private audioSourceNode: MediaStreamAudioSourceNode | null = null;
+  private micSourceNode: MediaStreamAudioSourceNode | null = null;
   private silentGain: GainNode | null = null;
   private isCapturingFrame: boolean = false;
 
@@ -72,17 +77,10 @@ export class BrowserMediaCaptureManager {
     this.callbacks = callbacks;
     this.speechDenied = false;
     this.startTime = Date.now();
+    this.prevThumbData = null;
 
     try {
-      // 1. Proactively request mic permission so speech recognition & mic mixing work reliably
-      try {
-        this.micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      } catch (micErr) {
-        console.info('Microphone direct access not granted, continuing with tab audio:', micErr);
-      }
-
-      // 2. Trigger Chrome's native picker (Chrome Tab / Window / Entire Screen)
-      // Request both video and audio
+      // 1. Immediately launch native Chrome screen/tab picker with ZERO delays (direct response to user click)
       const displayMediaOptions: DisplayMediaStreamOptions = {
         video: {
           displaySurface: 'browser',
@@ -102,42 +100,74 @@ export class BrowserMediaCaptureManager {
         };
       }
 
-      // 3. Setup video and canvas for periodic frame extraction
+      // 2. Setup video and canvas for periodic frame extraction
       this.videoElement = document.createElement('video');
       this.videoElement.srcObject = this.mediaStream;
       this.videoElement.muted = true;
-      await this.videoElement.play();
+      this.videoElement.playsInline = true;
+      this.videoElement.setAttribute('playsinline', '');
+      this.videoElement.setAttribute('muted', '');
+      try {
+        await this.videoElement.play();
+      } catch (playErr) {
+        console.warn('Video element play note:', playErr);
+      }
 
       this.canvasElement = document.createElement('canvas');
       this.canvasElement.width = 960;
       this.canvasElement.height = 540;
 
-      // 4. Start background-safe worker frame sampling (every 3.0 seconds)
-      // Fix: ONLY run one timer. Fallback to setInterval only if Web Worker failed!
-      const workerStarted = this.workerTimer.start(3000, () => {
+      this.diffCanvas = document.createElement('canvas');
+      this.diffCanvas.width = 16;
+      this.diffCanvas.height = 9;
+
+      // 3. Fast frame extraction (initial frame at 250ms, then sampling every 2.5s)
+      const workerStarted = this.workerTimer.start(2500, () => {
         this.sampleCurrentFrame(false);
       });
 
       if (!workerStarted) {
         this.fallbackIntervalId = setInterval(() => {
           this.sampleCurrentFrame(false);
-        }, 3000);
+        }, 2500);
       }
 
-      // Initial frame immediately
-      setTimeout(() => this.sampleCurrentFrame(true), 600);
+      // First frame capture immediately once video is playing
+      setTimeout(() => this.sampleCurrentFrame(true), 250);
 
-      // 5. Setup Audio Streaming (Meeting tab audio + mic)
+      // 4. Setup Audio Streaming (Captures tab lecture audio + mic)
       this.setupAudioRecording();
 
-      // 6. Setup Speech Recognition if available for real-time speech transcription
+      // 5. Setup native client Speech Recognition with auto-restart
       this.setupSpeechRecognition();
+
+      // 6. Asynchronously request mic in background (NEVER blocks the screen share picker from appearing!)
+      navigator.mediaDevices?.getUserMedia({ audio: true, video: false })
+        .then(mic => {
+          this.micStream = mic;
+          this.attachMicStream(mic);
+        })
+        .catch(err => {
+          console.info('Microphone background access note (tab audio will be used):', err.name);
+        });
 
       return true;
     } catch (err) {
       console.error('User cancelled or screen capture failed:', err);
       this.stopCapture();
       return false;
+    }
+  }
+
+  private attachMicStream(micStream: MediaStream) {
+    if (!this.audioContext || this.audioContext.state === 'closed') return;
+    try {
+      if (micStream.getAudioTracks().length > 0 && this.audioProcessor) {
+        this.micSourceNode = this.audioContext.createMediaStreamSource(micStream);
+        this.micSourceNode.connect(this.audioProcessor);
+      }
+    } catch (e) {
+      console.warn('Could not attach mic stream to audio processor:', e);
     }
   }
 
@@ -150,6 +180,29 @@ export class BrowserMediaCaptureManager {
     }
     this.isCapturingFrame = true;
     try {
+      // 1. Lightweight visual change detection using 16x9 downscaled canvas (0.05ms)
+      if (this.diffCanvas) {
+        const diffCtx = this.diffCanvas.getContext('2d');
+        if (diffCtx) {
+          diffCtx.drawImage(this.videoElement, 0, 0, 16, 9);
+          const imgData = diffCtx.getImageData(0, 0, 16, 9).data;
+          if (!force && this.prevThumbData) {
+            let diffSum = 0;
+            for (let i = 0; i < imgData.length; i += 4) {
+              diffSum += Math.abs(imgData[i] - this.prevThumbData[i]) +
+                         Math.abs(imgData[i+1] - this.prevThumbData[i+1]) +
+                         Math.abs(imgData[i+2] - this.prevThumbData[i+2]);
+            }
+            const avgDiff = diffSum / (16 * 9 * 3);
+            // If the video frame hasn't visibly changed (stationary slide or paused), skip sending 80KB frame!
+            if (avgDiff < 2.5) {
+              return;
+            }
+          }
+          this.prevThumbData = new Uint8Array(imgData);
+        }
+      }
+
       const ctx = this.canvasElement.getContext('2d');
       if (!ctx) return;
 
@@ -168,15 +221,7 @@ export class BrowserMediaCaptureManager {
 
   private setupAudioRecording() {
     try {
-      // If Web Speech API is supported in this browser, Chrome transcribes speech natively with 0 server CPU.
-      // Skipping redundant 1.2s raw audio streaming preserves server responsiveness on cloud free tiers.
-      const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognitionClass) {
-        console.info('Native Web Speech STT available. Client handles speech recognition with zero server CPU overhead.');
-        return;
-      }
-
-      // Gather audio tracks from tab and mic
+      // Gather audio tracks from shared Chrome tab and any mic
       const audioTracks: MediaStreamTrack[] = [];
       if (this.mediaStream) {
         this.mediaStream.getAudioTracks().forEach(t => audioTracks.push(t));
@@ -217,10 +262,10 @@ export class BrowserMediaCaptureManager {
 
       let accumulatedSamples: number[] = [];
       let previousOverlap: number[] = [];
-      // 1.2s target new audio (19,200 samples at 16kHz) for ultra-low latency real-time transcription.
-      // 0.25s sliding overlap handles boundary words cleanly without delay.
-      const targetNewSamples = Math.round(actualSampleRate * 1.2);
-      const overlapLength = Math.round(actualSampleRate * 0.25);
+      // 2.5s target new audio (40,000 samples at 16kHz) for optimal Whisper phonetic context.
+      // 0.35s sliding overlap handles boundary words cleanly without delay.
+      const targetNewSamples = Math.round(actualSampleRate * 2.5);
+      const overlapLength = Math.round(actualSampleRate * 0.35);
 
       this.audioProcessor.onaudioprocess = (e: AudioProcessingEvent) => {
         if (!this.callbacks?.onAudioChunk) return;
@@ -245,11 +290,14 @@ export class BrowserMediaCaptureManager {
           }
           const rms = Math.sqrt(sumSquares / fullBuffer.length);
 
-          if (rms > 0.003) {
+          // If client Web Speech API is already transcribing voice, avoid sending redundant audio to server
+          const webSpeechIsActive = (Date.now() - this.lastWebSpeechTime) < 2500;
+
+          if (rms > 0.004 && !webSpeechIsActive) {
             const timestampSec = (Date.now() - this.startTime) / 1000.0;
             const wavBase64 = this.encodeWAVBase64(fullBuffer, actualSampleRate);
             if (wavBase64 && this.callbacks?.onAudioChunk) {
-              this.callbacks.onAudioChunk(wavBase64, timestampSec, 'Speaker');
+              this.callbacks.onAudioChunk(wavBase64, timestampSec, 'Instructor');
             }
           }
         }
@@ -339,6 +387,7 @@ export class BrowserMediaCaptureManager {
 
           // Emit final transcript when phrase is completed
           if (finalTranscript.trim() && this.callbacks?.onTranscriptChunk) {
+            this.lastWebSpeechTime = Date.now();
             this.callbacks.onTranscriptChunk(finalTranscript.trim(), timestampSec, 'Speaker');
           }
         };
@@ -354,9 +403,16 @@ export class BrowserMediaCaptureManager {
         };
 
         this.recognition.onend = () => {
-          // Restart if still active and permission not denied
+          if (this.recognitionRestartTimer) clearTimeout(this.recognitionRestartTimer);
+          // Debounced restart (300ms) to allow Chrome's audio subsystem to clean up and prevent InvalidStateError
           if (!this.speechDenied && this.mediaStream && this.mediaStream.active) {
-            try { this.recognition.start(); } catch (_) {}
+            this.recognitionRestartTimer = setTimeout(() => {
+              try {
+                if (this.mediaStream && this.mediaStream.active && this.recognition) {
+                  this.recognition.start();
+                }
+              } catch (_) {}
+            }, 300);
           }
         };
 
@@ -374,6 +430,11 @@ export class BrowserMediaCaptureManager {
       clearInterval(this.fallbackIntervalId);
       this.fallbackIntervalId = null;
     }
+    if (this.recognitionRestartTimer) {
+      clearTimeout(this.recognitionRestartTimer);
+      this.recognitionRestartTimer = null;
+    }
+    this.prevThumbData = null;
     if (this.audioProcessor) {
       try {
         this.audioProcessor.disconnect();
@@ -384,6 +445,10 @@ export class BrowserMediaCaptureManager {
     if (this.audioSourceNode) {
       try { this.audioSourceNode.disconnect(); } catch (_) {}
       this.audioSourceNode = null;
+    }
+    if (this.micSourceNode) {
+      try { this.micSourceNode.disconnect(); } catch (_) {}
+      this.micSourceNode = null;
     }
     if (this.silentGain) {
       try { this.silentGain.disconnect(); } catch (_) {}

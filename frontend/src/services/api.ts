@@ -72,6 +72,19 @@ export const getFrameThumbnailUrl = (frameId: string): string => {
   return `${getApiBase()}/frames/${frameId}/thumbnail`;
 };
 
+export const getExportDownloadUrl = (pathOrUrl: string): string => {
+  if (!pathOrUrl) return '';
+  if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) {
+    return pathOrUrl;
+  }
+  const base = getApiBase(); // e.g. "https://transcript-agent-backend.onrender.com/api" or "/api"
+  const cleanPath = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+  if (cleanPath.startsWith('/api/')) {
+    return `${base}${cleanPath.substring(4)}`;
+  }
+  return `${base}${cleanPath}`;
+};
+
 export const API_BASE = getApiBase();
 
 export const api = {
@@ -194,7 +207,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId, style, slide_count: slideCount }),
     });
-    return res.json();
+    const data = await res.json();
+    if (data && data.download_url) {
+      data.download_url = getExportDownloadUrl(data.download_url);
+    }
+    return data;
   },
 
   async generatePDF(sessionId: string, pdfType: 'teaching_report' | 'visual_pack'): Promise<{ status: string; filename: string; download_url: string }> {
@@ -203,7 +220,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId, pdf_type: pdfType }),
     });
-    return res.json();
+    const data = await res.json();
+    if (data && data.download_url) {
+      data.download_url = getExportDownloadUrl(data.download_url);
+    }
+    return data;
   },
 
   // Quiz & Practice
@@ -335,14 +356,22 @@ export const api = {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/export/slide-pdf`, {
       method: 'POST',
     });
-    return res.json();
+    const data = await res.json();
+    if (data && data.download_url) {
+      data.download_url = getExportDownloadUrl(data.download_url);
+    }
+    return data;
   },
 
   async exportSlideOnlyPptx(sessionId: string): Promise<{ status: string; filename: string; download_url: string }> {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}/export/slide-pptx`, {
       method: 'POST',
     });
-    return res.json();
+    const data = await res.json();
+    if (data && data.download_url) {
+      data.download_url = getExportDownloadUrl(data.download_url);
+    }
+    return data;
   },
 
   // System Settings

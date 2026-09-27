@@ -342,11 +342,33 @@ async def generate_pdf(session_id: str, req: PDFGenerateRequest):
 @router.get("/exports/{session_id}/{filename}")
 async def download_export(session_id: str, filename: str):
     session_dir = get_session_dir(session_id)
-    target = session_dir / "exports" / filename
+    exports_dir = session_dir / "exports"
+    target = exports_dir / filename
+    if not target.exists() and exports_dir.exists():
+        ext = os.path.splitext(filename)[1].lower()
+        if not ext and "pdf" in filename.lower():
+            ext = ".pdf"
+        elif not ext and "ppt" in filename.lower():
+            ext = ".pptx"
+        if ext:
+            matching = sorted(exports_dir.glob(f"*{ext}"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if matching:
+                target = matching[0]
+                filename = target.name
+
     if not target.exists():
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail=f"Export file '{filename}' not found for session {session_id}")
     media_type = "application/vnd.openxmlformats-officedocument.presentationml.presentation" if filename.endswith(".pptx") else "application/pdf"
-    return FileResponse(str(target), media_type=media_type, filename=filename)
+    return FileResponse(
+        str(target),
+        media_type=media_type,
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
+
+@router.get("/sessions/{session_id}/export/{filename}")
+async def download_session_export_alias(session_id: str, filename: str):
+    return await download_export(session_id, filename)
 
 # ----------------- QUIZ & PRACTICE -----------------
 @router.post("/sessions/{session_id}/quiz/import")

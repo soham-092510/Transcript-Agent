@@ -16,7 +16,7 @@ import {
   Layers,
   ArrowRight
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, getExportDownloadUrl } from '../services/api';
 
 interface AutoPilotModalProps {
   isOpen: boolean;
@@ -183,8 +183,8 @@ export const AutoPilotModal: React.FC<AutoPilotModalProps> = ({
         api.exportSlideOnlyPdf(sessId),
         api.exportSlideOnlyPptx(sessId)
       ]);
-      if (pdfRes && pdfRes.download_url) setLastPdfUrl(pdfRes.download_url);
-      if (pptxRes && pptxRes.download_url) setLastPptxUrl(pptxRes.download_url);
+      if (pdfRes && pdfRes.download_url) setLastPdfUrl(getExportDownloadUrl(pdfRes.download_url));
+      if (pptxRes && pptxRes.download_url) setLastPptxUrl(getExportDownloadUrl(pptxRes.download_url));
     } catch (err) {
       console.warn('Auto export note:', err);
     }

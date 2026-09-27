@@ -23,7 +23,7 @@ services:
       - key: ENABLE_LIVE_VLM
         value: "false"
       - key: ENABLE_LIVE_WHISPER
-        value: "false"
+        value: "true"
       - key: OLLAMA_BASE_URL
         value: http://localhost:11434
       - key: DEFAULT_LLM_MODEL

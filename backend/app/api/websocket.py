@@ -135,6 +135,13 @@ async def _session_audio_worker(session_id: str):
     while True:
         try:
             audio_bytes, speaker, timestamp_sec = await queue.get()
+            # If newer audio chunks arrived while worker was processing, drop older chunks to prevent lag
+            while not queue.empty():
+                try:
+                    audio_bytes, speaker, timestamp_sec = queue.get_nowait()
+                    queue.task_done()
+                except Exception:
+                    break
             await _process_audio_async(session_id, audio_bytes, speaker, timestamp_sec)
             queue.task_done()
         except asyncio.CancelledError:
@@ -204,7 +211,7 @@ async def session_websocket_endpoint(websocket: WebSocket, session_id: str):
                 try:
                     audio_bytes = base64.b64decode(b64_audio)
                     if session_id not in _session_audio_queues:
-                        _session_audio_queues[session_id] = asyncio.Queue(maxsize=10)
+                        _session_audio_queues[session_id] = asyncio.Queue(maxsize=3)
                         _session_audio_workers[session_id] = asyncio.create_task(_session_audio_worker(session_id))
 
                     queue = _session_audio_queues[session_id]

@@ -231,12 +231,16 @@ export function App() {
   const handleConfirmStart = async (title: string, platform: string) => {
     setStartModalOpen(false);
     try {
-      const newSession = await api.createSession(title, platform);
-      setSessions(prev => [newSession, ...prev]);
-      await selectSession(newSession);
+      // 1. Immediately trigger screen sharing while the browser transient activation is fresh
+      const startObsPromise = startMediaObservation();
 
-      const ok = await startMediaObservation();
-      if (ok) {
+      // 2. Concurrently create session in backend
+      const newSessionPromise = api.createSession(title, platform);
+
+      const [ok, newSession] = await Promise.all([startObsPromise, newSessionPromise]);
+      if (ok && newSession) {
+        setSessions(prev => [newSession, ...prev]);
+        await selectSession(newSession);
         setIsCapturing(true);
         setCurrentTab('live');
       }
