@@ -11,7 +11,7 @@ from reportlab.platypus import (
 from reportlab.lib.units import inch
 from reportlab.pdfgen import canvas
 
-from backend.app.db.database import DatabaseManager, get_session_dir
+from backend.app.db.database import DatabaseManager, get_session_dir, resolve_frame_path
 
 COLOR_PRIMARY = colors.HexColor("#0f172a")   # Slate 900
 COLOR_SECONDARY = colors.HexColor("#1e293b") # Slate 800
@@ -67,15 +67,20 @@ class PDFGenerationService:
         page_h = 5.625 * inch    # 405 points (exact 16:9)
         c = canvas.Canvas(file_path, pagesize=(page_w, page_h))
         
-        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
-        if not valid_frames:
+        resolved_frames = []
+        for f in frames:
+            p = resolve_frame_path(f.image_path, session.id)
+            if p and p.is_file():
+                resolved_frames.append((f, str(p)))
+
+        if not resolved_frames:
             c.setFont("Helvetica-Bold", 16)
             c.drawString(72, page_h / 2, f"No slide captures available for {session.title}")
             c.showPage()
         else:
-            for f in valid_frames:
+            for f, img_file in resolved_frames:
                 try:
-                    c.drawImage(f.image_path, 0, 0, width=page_w, height=page_h)
+                    c.drawImage(img_file, 0, 0, width=page_w, height=page_h)
                     c.showPage()
                 except Exception as e:
                     print(f"Canvas slide draw error: {e}")
@@ -113,10 +118,11 @@ class PDFGenerationService:
                 frame_block.append(Spacer(1, 6))
 
                 # If image exists on disk, embed it
-                if os.path.exists(f.image_path):
+                resolved_img = resolve_frame_path(f.image_path, session.id)
+                if resolved_img and resolved_img.is_file():
                     try:
                         # Standard aspect ratio scale
-                        img = RLImage(f.image_path, width=5.5 * inch, height=3.1 * inch)
+                        img = RLImage(str(resolved_img), width=5.5 * inch, height=3.1 * inch)
                         frame_block.append(img)
                         frame_block.append(Spacer(1, 6))
                     except Exception as e:

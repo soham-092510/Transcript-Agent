@@ -39,6 +39,7 @@ import {
   ChatMessage 
 } from '../types';
 import { mediaCaptureManager } from '../services/mediaCapture';
+import { getFrameImageUrl, getFrameThumbnailUrl } from '../services/api';
 import { FormattedAnswer } from './FormattedAnswer';
 
 interface ModernStudioLayoutProps {
@@ -213,9 +214,9 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                   muted
                   className="w-full h-full object-contain"
                 />
-              ) : activeFrame && activeFrame.image_path ? (
+              ) : activeFrame && activeFrame.id ? (
                 <img
-                  src={`/api/frames/${activeFrame.id}/image`}
+                  src={getFrameImageUrl(activeFrame.id)}
                   alt="Captured Slide"
                   className="w-full h-full object-contain cursor-pointer"
                   onClick={() => onOpenSlidePreview(activeFrame.id)}
@@ -425,11 +426,14 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
                     }`}
                   >
                     <div className="aspect-video rounded-lg bg-black/40 overflow-hidden mb-1.5 flex items-center justify-center relative border border-white/5">
-                      {frame.image_path ? (
+                      {frame.id ? (
                         <img 
-                          src={`/api/frames/${frame.id}/thumbnail`} 
+                          src={getFrameThumbnailUrl(frame.id)} 
                           alt="Moment" 
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = getFrameImageUrl(frame.id);
+                          }}
                         />
                       ) : (
                         <div className="w-full h-full bg-gradient-to-br from-slate-900 to-slate-800 flex items-center justify-center p-1 text-center">
@@ -770,9 +774,9 @@ export const ModernStudioLayout: React.FC<ModernStudioLayoutProps> = ({
             onClick={() => activeFrame && onOpenSlidePreview(activeFrame.id)}
             className="aspect-video rounded-xl bg-slate-950 border border-slate-800 overflow-hidden relative group cursor-pointer shadow-metallic-subtle flex items-center justify-center"
           >
-            {activeFrame && activeFrame.image_path ? (
+            {activeFrame && activeFrame.id ? (
               <img
-                src={`/api/frames/${activeFrame.id}/image`}
+                src={getFrameImageUrl(activeFrame.id)}
                 alt="Current Slide"
                 className="w-full h-full object-cover group-hover:scale-105 transition-transform"
               />

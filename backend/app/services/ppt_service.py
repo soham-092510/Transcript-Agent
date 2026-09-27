@@ -8,7 +8,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN
 
 from backend.app.models.schemas import PPTStyle
-from backend.app.db.database import DatabaseManager, get_session_dir
+from backend.app.db.database import DatabaseManager, get_session_dir, resolve_frame_path
 
 # Modern White Aesthetic Palette
 BG_WHITE = RGBColor(255, 255, 255)       # Clean White
@@ -44,8 +44,13 @@ class PPTGenerationService:
         prs.slide_height = Inches(7.5)
         blank_layout = prs.slide_layouts[6]
 
-        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
-        if not valid_frames:
+        resolved_frames = []
+        for f in frames:
+            p = resolve_frame_path(f.image_path, session.id)
+            if p and p.is_file():
+                resolved_frames.append((f, str(p)))
+
+        if not resolved_frames:
             slide = prs.slides.add_slide(blank_layout)
             tb = slide.shapes.add_textbox(Inches(1), Inches(3), Inches(11.333), Inches(1.5))
             p = tb.text_frame.add_paragraph()
@@ -54,11 +59,11 @@ class PPTGenerationService:
             p.font.bold = True
             p.font.color.rgb = TEXT_DARK
         else:
-            for f in valid_frames:
+            for f, img_file in resolved_frames:
                 slide = prs.slides.add_slide(blank_layout)
                 try:
                     # Full bleed 16:9 image placement (exact video size: 13.333in x 7.5in)
-                    slide.shapes.add_picture(f.image_path, Inches(0), Inches(0), width=Inches(13.333), height=Inches(7.5))
+                    slide.shapes.add_picture(img_file, Inches(0), Inches(0), width=Inches(13.333), height=Inches(7.5))
                 except Exception as e:
                     print(f"Slide picture add failed: {e}")
 
@@ -105,7 +110,11 @@ class PPTGenerationService:
 
         # 4. Slides: Captured Visual Slides & Architecture Diagrams
         # Dynamically include captured frames up to requested slide count
-        valid_frames = [f for f in frames if os.path.exists(f.image_path)]
+        valid_frames = []
+        for f in frames:
+            p = resolve_frame_path(f.image_path, session.id)
+            if p and p.is_file():
+                valid_frames.append(f)
         max_visual_slides = max(1, min(len(valid_frames), slide_count - 4))
         for v_frame in valid_frames[:max_visual_slides]:
             try:
@@ -240,10 +249,12 @@ class PPTGenerationService:
         cls._add_slide_header(slide, "VISUAL ARCHITECTURE", f"Captured at {frame.timestamp_formatted}")
 
         # Embed screenshot image on left
-        try:
-            slide.shapes.add_picture(frame.image_path, Inches(1.2), Inches(2.0), width=Inches(6.2))
-        except Exception as e:
-            print(f"Error adding slide image: {e}")
+        resolved_img = resolve_frame_path(frame.image_path, getattr(frame, "session_id", None))
+        if resolved_img and resolved_img.is_file():
+            try:
+                slide.shapes.add_picture(str(resolved_img), Inches(1.2), Inches(2.0), width=Inches(6.2))
+            except Exception as e:
+                print(f"Error adding slide image: {e}")
 
         # Text explanation on right
         tx_box = slide.shapes.add_textbox(Inches(7.8), Inches(2.0), Inches(4.5), Inches(4.5))

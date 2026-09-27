@@ -5,7 +5,7 @@ import asyncio
 from typing import List, Optional
 from pydantic import BaseModel
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 
 from backend.app.core.config import settings
 from backend.app.models.schemas import (
@@ -14,7 +14,7 @@ from backend.app.models.schemas import (
     ChatRequest, CommandRequest, PPTGenerateRequest, PDFGenerateRequest,
     PinItemRequest, SystemStatusResponse, TaskState, TeacherMode, CustomQuizRequest
 )
-from backend.app.db.database import DatabaseManager, get_session_dir
+from backend.app.db.database import DatabaseManager, get_session_dir, resolve_frame_path
 from backend.app.services.screenshot_service import screenshot_service
 from backend.app.services.knowledge_service import knowledge_service
 from backend.app.services.rag_service import rag_service
@@ -172,32 +172,104 @@ async def upload_audio_chunk(
         saved_segments.append(segment)
     return {"status": "TRANSCRIBED", "count": len(saved_segments), "segments": saved_segments}
 
+def generate_fallback_slide_svg(category: str = "SLIDE", description: str = "Lecture Slide", timestamp_str: str = "00:00") -> bytes:
+    """Generates a crisp, dark metallic SVG slide visual when an image file is not on disk."""
+    import html
+    safe_cat = html.escape(str(category or "SLIDE").upper())
+    safe_desc = html.escape(str(description or "Visual Lecture Slide")[:80])
+    safe_ts = html.escape(str(timestamp_str or "00:00"))
+    
+    svg = f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720" width="1280" height="720">
+      <defs>
+        <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#090d16" />
+          <stop offset="50%" stop-color="#111827" />
+          <stop offset="100%" stop-color="#090d16" />
+        </linearGradient>
+        <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.15"/>
+          <stop offset="100%" stop-color="#0284c7" stop-opacity="0.05"/>
+        </linearGradient>
+      </defs>
+      <rect width="1280" height="720" fill="url(#bg)"/>
+      <rect x="30" y="30" width="1220" height="660" rx="20" fill="none" stroke="#334155" stroke-width="2"/>
+      <rect x="45" y="45" width="1190" height="630" rx="16" fill="url(#glow)"/>
+      
+      <!-- Top header bar -->
+      <g transform="translate(70, 95)">
+        <rect width="160" height="40" rx="8" fill="#0284c7" fill-opacity="0.25" stroke="#38bdf8" stroke-width="1.5"/>
+        <text x="80" y="26" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#38bdf8" text-anchor="middle" letter-spacing="1">[{safe_cat}]</text>
+        
+        <rect x="980" y="0" width="140" height="40" rx="8" fill="#1e293b" stroke="#475569" stroke-width="1.5"/>
+        <text x="1050" y="26" font-family="monospace" font-size="16" font-weight="600" fill="#94a3b8" text-anchor="middle">{safe_ts}</text>
+      </g>
+      
+      <!-- Center Graphic: Slide Presentation Canvas -->
+      <g transform="translate(640, 360)">
+        <circle r="60" fill="#1e293b" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 4"/>
+        <path d="M -22 -20 L 28 0 L -22 20 Z" fill="#38bdf8" fill-opacity="0.85"/>
+        <text x="0" y="110" font-family="system-ui, sans-serif" font-size="26" font-weight="700" fill="#f8fafc" text-anchor="middle">{safe_desc}</text>
+        <text x="0" y="145" font-family="system-ui, sans-serif" font-size="15" fill="#64748b" text-anchor="middle">LearnLens AI Multimodal Visual Evidence Frame</text>
+      </g>
+    </svg>"""
+    return svg.encode("utf-8")
+
 @router.get("/frames/{frame_id}/image")
 async def get_frame_image(frame_id: str):
     from backend.app.db.database import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT image_path FROM frames WHERE id = ?", (frame_id,))
+    cursor.execute("SELECT session_id, image_path, thumbnail_path, category, visual_description, timestamp_formatted FROM frames WHERE id = ?", (frame_id,))
     row = cursor.fetchone()
     conn.close()
-    if not row or not os.path.exists(row["image_path"]):
-        raise HTTPException(status_code=404, detail="Image not found")
-    return FileResponse(row["image_path"], media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+    if row:
+        resolved = resolve_frame_path(row["image_path"], row["session_id"])
+        if not resolved and row["thumbnail_path"]:
+            resolved = resolve_frame_path(row["thumbnail_path"], row["session_id"])
+        if resolved and resolved.is_file():
+            return FileResponse(str(resolved), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+        
+        # Return elegant SVG slide visual fallback
+        svg_data = generate_fallback_slide_svg(
+            category=row["category"] or "SLIDE",
+            description=row["visual_description"] or "Lecture Slide Capture",
+            timestamp_str=row["timestamp_formatted"] or "00:00"
+        )
+        return Response(content=svg_data, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
+
+    # Even for unknown ID, return graceful generic slide fallback rather than 404
+    svg_data = generate_fallback_slide_svg("SLIDE", "Lecture Slide Capture", "00:00")
+    return Response(content=svg_data, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=300"})
 
 @router.get("/frames/{frame_id}/thumbnail")
 async def get_frame_thumbnail(frame_id: str):
     from backend.app.db.database import get_db_connection
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT thumbnail_path, image_path FROM frames WHERE id = ?", (frame_id,))
+    cursor.execute("SELECT session_id, thumbnail_path, image_path, category, visual_description, timestamp_formatted FROM frames WHERE id = ?", (frame_id,))
     row = cursor.fetchone()
     conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail="Thumbnail not found")
-    target = row["thumbnail_path"] if row["thumbnail_path"] and os.path.exists(row["thumbnail_path"]) else row["image_path"]
-    if not os.path.exists(target):
-        raise HTTPException(status_code=404, detail="Image file missing")
-    return FileResponse(target, media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+    if row:
+        resolved = None
+        if row["thumbnail_path"]:
+            resolved = resolve_frame_path(row["thumbnail_path"], row["session_id"])
+        if not resolved and row["image_path"]:
+            resolved = resolve_frame_path(row["image_path"], row["session_id"])
+        if resolved and resolved.is_file():
+            return FileResponse(str(resolved), media_type="image/jpeg", headers={"Cache-Control": "public, max-age=86400"})
+
+        # Return elegant SVG slide thumbnail fallback
+        svg_data = generate_fallback_slide_svg(
+            category=row["category"] or "SLIDE",
+            description=row["visual_description"] or "Lecture Slide Capture",
+            timestamp_str=row["timestamp_formatted"] or "00:00"
+        )
+        return Response(content=svg_data, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
+
+    svg_data = generate_fallback_slide_svg("SLIDE", "Lecture Slide Capture", "00:00")
+    return Response(content=svg_data, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=300"})
 
 # ----------------- CONCEPTS -----------------
 @router.get("/sessions/{session_id}/concepts", response_model=List[Concept])

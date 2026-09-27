@@ -3,7 +3,7 @@ import json
 import os
 from pathlib import Path
 from typing import List, Optional, Dict, Any
-from backend.app.core.config import settings, SESSIONS_DIR
+from backend.app.core.config import settings, SESSIONS_DIR, DATA_DIR, BASE_DIR
 from backend.app.models.schemas import (
     LearningSession, TranscriptSegment, FrameCapture, Concept,
     ChatMessage, QuizQuestion, LearnerProfile, TaskState, VisualCategory, TeacherMode
@@ -149,6 +149,27 @@ def init_db():
         FOREIGN KEY (session_id) REFERENCES sessions (id) ON DELETE CASCADE
     )
     """)
+
+    # Path Portability Migration:
+    # If frames have Windows-specific paths like 'C:\Users\...' or backslashes,
+    # normalize them to clean portable paths relative to sessions directory.
+    try:
+        cursor.execute("SELECT id, session_id, image_path, thumbnail_path FROM frames WHERE image_path LIKE 'C:%' OR image_path LIKE 'c:%' OR image_path LIKE '%\\%'")
+        rows = cursor.fetchall()
+        for r in rows:
+            fid = r["id"]
+            sid = r["session_id"]
+            raw_img = r["image_path"] or ""
+            raw_thumb = r["thumbnail_path"] or ""
+            img_name = Path(raw_img.replace("\\", "/")).name if raw_img else ""
+            thumb_name = Path(raw_thumb.replace("\\", "/")).name if raw_thumb else ""
+            new_img = f"sessions/{sid}/screenshots/{img_name}" if img_name else ""
+            new_thumb = f"sessions/{sid}/screenshots/{thumb_name}" if thumb_name else ""
+            cursor.execute("UPDATE frames SET image_path = ?, thumbnail_path = ? WHERE id = ?", (new_img, new_thumb, fid))
+        if rows:
+            conn.commit()
+    except Exception:
+        pass
     
     conn.commit()
     conn.close()
@@ -159,6 +180,62 @@ def get_session_dir(session_id: str) -> Path:
     (s_dir / "screenshots").mkdir(parents=True, exist_ok=True)
     (s_dir / "exports").mkdir(parents=True, exist_ok=True)
     return s_dir
+
+def resolve_frame_path(image_path: Optional[str], session_id: Optional[str] = None) -> Optional[Path]:
+    """
+    Robustly resolves a frame image or thumbnail path across environments
+    (Windows, Linux, Docker, Render) regardless of whether an absolute Windows path
+    or relative path was stored in SQLite.
+    """
+    if not image_path:
+        return None
+
+    raw_path = str(image_path).strip()
+    if not raw_path:
+        return None
+
+    p = Path(raw_path)
+    # 1. Exact path as stored if on current machine
+    if p.is_file():
+        return p
+
+    # 2. Extract filename
+    fname = p.name
+
+    # 3. Detect session_id if not explicitly provided
+    if not session_id:
+        normalized_str = raw_path.replace("\\", "/")
+        if "sessions/" in normalized_str:
+            after_sessions = normalized_str.split("sessions/")[1]
+            parts = after_sessions.split("/")
+            if len(parts) > 1:
+                session_id = parts[0]
+
+    # 4. Search in SESSIONS_DIR
+    if session_id:
+        c1 = SESSIONS_DIR / session_id / "screenshots" / fname
+        if c1.is_file():
+            return c1
+        c2 = SESSIONS_DIR / session_id / fname
+        if c2.is_file():
+            return c2
+
+    # 5. Search in DATA_DIR / BASE_DIR
+    if session_id:
+        c3 = DATA_DIR / "sessions" / session_id / "screenshots" / fname
+        if c3.is_file():
+            return c3
+        c4 = BASE_DIR / "data" / "sessions" / session_id / "screenshots" / fname
+        if c4.is_file():
+            return c4
+
+    # 6. Global search in any session's screenshots directory for this filename
+    for s_dir in SESSIONS_DIR.glob("*"):
+        candidate = s_dir / "screenshots" / fname
+        if candidate.is_file():
+            return candidate
+
+    return None
 
 def _deduplicate_overlap(last_tail: str, new_text: str) -> str:
     """Strip overlapping words at chunk boundary from sliding-window audio capture."""
@@ -454,12 +531,19 @@ class DatabaseManager:
     def add_frame(frame: FrameCapture):
         conn = get_db_connection()
         cursor = conn.cursor()
+        
+        # Ensure portable storage path: sessions/<session_id>/screenshots/<filename>
+        img_name = Path(str(frame.image_path).replace("\\", "/")).name if frame.image_path else ""
+        thumb_name = Path(str(frame.thumbnail_path).replace("\\", "/")).name if frame.thumbnail_path else ""
+        portable_img = f"sessions/{frame.session_id}/screenshots/{img_name}" if img_name else (frame.image_path or "")
+        portable_thumb = f"sessions/{frame.session_id}/screenshots/{thumb_name}" if thumb_name else (frame.thumbnail_path or "")
+
         cursor.execute("""
         INSERT INTO frames (id, session_id, timestamp_sec, timestamp_formatted, image_path, thumbnail_path, p_hash, ocr_text, visual_description, category, importance_score, concepts, is_pinned)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             frame.id, frame.session_id, frame.timestamp_sec, frame.timestamp_formatted,
-            frame.image_path, frame.thumbnail_path, frame.p_hash, frame.ocr_text,
+            portable_img, portable_thumb, frame.p_hash, frame.ocr_text,
             frame.visual_description, frame.category.value, frame.importance_score,
             json.dumps(frame.concepts), 1 if frame.is_pinned else 0
         ))

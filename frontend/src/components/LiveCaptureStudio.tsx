@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { FrameCapture, TranscriptSegment, LearningSession } from '../types';
 import { mediaCaptureManager } from '../services/mediaCapture';
+import { getFrameImageUrl, getFrameThumbnailUrl } from '../services/api';
 
 interface LiveCaptureStudioProps {
   session: LearningSession;
@@ -281,7 +282,7 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
                 />
               ) : recentFrames.length > 0 ? (
                 <img
-                  src={`/api/frames/${recentFrames[recentFrames.length - 1].id}/image`}
+                  src={getFrameImageUrl(recentFrames[recentFrames.length - 1].id)}
                   alt="Last Captured Slide"
                   className="w-full h-full object-contain cursor-pointer"
                   onClick={() => onOpenSlidePreview(recentFrames[recentFrames.length - 1].id)}
@@ -477,11 +478,14 @@ export const LiveCaptureStudio: React.FC<LiveCaptureStudioProps> = ({
                 onClick={() => onOpenSlidePreview(f.id)}
                 className="w-52 shrink-0 rounded-xl bg-slate-50 border border-slate-200 hover:border-brand-500 p-2 cursor-pointer transition-all group shadow-sm hover:shadow"
               >
-                <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-200 mb-2">
+                <div className="relative aspect-video rounded-lg overflow-hidden bg-slate-900 border border-slate-700/60 mb-2">
                   <img
-                    src={`/api/frames/${f.id}/thumbnail`}
+                    src={getFrameThumbnailUrl(f.id)}
                     alt="Slide"
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = getFrameImageUrl(f.id);
+                    }}
                   />
                   <span className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded bg-white/90 text-[10px] font-mono font-semibold text-brand-700 shadow-sm border border-slate-200">
                     {f.timestamp_formatted}

@@ -12,6 +12,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { FrameCapture, VisualCategory } from '../types';
+import { getFrameImageUrl, getFrameThumbnailUrl } from '../services/api';
 
 interface SlideCollectionProps {
   frames: FrameCapture[];
@@ -106,9 +107,12 @@ export const SlideCollection: React.FC<SlideCollectionProps> = ({
                 onClick={() => setSelectedPreviewId(frame.id)}
               >
                 <img
-                  src={`/api/frames/${frame.id}/image`}
+                  src={getFrameThumbnailUrl(frame.id)}
                   alt="Lecture Slide"
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = getFrameImageUrl(frame.id);
+                  }}
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
                   <span className="text-xs font-semibold text-white flex items-center gap-1">
@@ -185,7 +189,7 @@ export const SlideCollection: React.FC<SlideCollectionProps> = ({
             {/* High Res Image */}
             <div className="rounded-xl overflow-hidden bg-slate-50 border border-slate-200">
               <img
-                src={`/api/frames/${activeModalFrame.id}/image`}
+                src={getFrameImageUrl(activeModalFrame.id)}
                 alt="Full preview"
                 className="w-full max-h-[480px] object-contain mx-auto"
               />

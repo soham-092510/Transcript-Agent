@@ -17,9 +17,37 @@ class DemoDataService:
     """
 
     @classmethod
+    def rebuild_demo_slide_files(cls):
+        session_id = "demo_cybersecurity_module_2"
+        session_dir = get_session_dir(session_id)
+        screenshots_dir = session_dir / "screenshots"
+        screenshots_dir.mkdir(parents=True, exist_ok=True)
+
+        frame_1_path = screenshots_dir / "slide_01_firewall_arch.jpg"
+        frame_1_thumb = screenshots_dir / "thumb_01_firewall_arch.jpg"
+        if not frame_1_path.exists():
+            cls._render_architecture_slide(frame_1_path)
+            cls._render_thumbnail(frame_1_path, frame_1_thumb)
+
+        frame_2_path = screenshots_dir / "slide_02_stateful_table.jpg"
+        frame_2_thumb = screenshots_dir / "thumb_02_stateful_table.jpg"
+        if not frame_2_path.exists():
+            cls._render_table_slide(frame_2_path)
+            cls._render_thumbnail(frame_2_path, frame_2_thumb)
+
+        frame_3_path = screenshots_dir / "slide_03_zero_trust.jpg"
+        frame_3_thumb = screenshots_dir / "thumb_03_zero_trust.jpg"
+        if not frame_3_path.exists():
+            cls._render_concept_slide(frame_3_path)
+            cls._render_thumbnail(frame_3_path, frame_3_thumb)
+
+    @classmethod
     def seed_demo_session(cls) -> str:
         session_id = "demo_cybersecurity_module_2"
-        # Check if demo session already exists
+        # Always guarantee image files exist on disk (even after cloud redeploy / container wipe)
+        cls.rebuild_demo_slide_files()
+
+        # Check if demo session already exists in DB
         existing = DatabaseManager.get_session(session_id)
         if existing:
             return existing.id
@@ -42,21 +70,13 @@ class DemoDataService:
         )
         DatabaseManager.create_session(session)
 
-        # 2. Generate Real Synthetic Slide Images
+        # 2. Ensure Real Synthetic Slide Images
         frame_1_path = screenshots_dir / "slide_01_firewall_arch.jpg"
         frame_1_thumb = screenshots_dir / "thumb_01_firewall_arch.jpg"
-        cls._render_architecture_slide(frame_1_path)
-        cls._render_thumbnail(frame_1_path, frame_1_thumb)
-
         frame_2_path = screenshots_dir / "slide_02_stateful_table.jpg"
         frame_2_thumb = screenshots_dir / "thumb_02_stateful_table.jpg"
-        cls._render_table_slide(frame_2_path)
-        cls._render_thumbnail(frame_2_path, frame_2_thumb)
-
         frame_3_path = screenshots_dir / "slide_03_zero_trust.jpg"
         frame_3_thumb = screenshots_dir / "thumb_03_zero_trust.jpg"
-        cls._render_concept_slide(frame_3_path)
-        cls._render_thumbnail(frame_3_path, frame_3_thumb)
 
         # Add FrameCaptures
         f1 = FrameCapture(

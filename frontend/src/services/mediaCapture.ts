@@ -109,19 +109,19 @@ export class BrowserMediaCaptureManager {
       await this.videoElement.play();
 
       this.canvasElement = document.createElement('canvas');
-      this.canvasElement.width = 1280;
-      this.canvasElement.height = 720;
+      this.canvasElement.width = 960;
+      this.canvasElement.height = 540;
 
-      // 4. Start background-safe worker frame sampling (every 2.5 seconds)
+      // 4. Start background-safe worker frame sampling (every 3.0 seconds)
       // Fix: ONLY run one timer. Fallback to setInterval only if Web Worker failed!
-      const workerStarted = this.workerTimer.start(2500, () => {
+      const workerStarted = this.workerTimer.start(3000, () => {
         this.sampleCurrentFrame(false);
       });
 
       if (!workerStarted) {
         this.fallbackIntervalId = setInterval(() => {
           this.sampleCurrentFrame(false);
-        }, 2500);
+        }, 3000);
       }
 
       // Initial frame immediately
@@ -154,7 +154,7 @@ export class BrowserMediaCaptureManager {
       if (!ctx) return;
 
       ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
-      const base64Data = this.canvasElement.toDataURL('image/jpeg', 0.82);
+      const base64Data = this.canvasElement.toDataURL('image/jpeg', 0.75);
       const timestampSec = (Date.now() - this.startTime) / 1000.0;
       this.callbacks.onFrameCaptured(base64Data, timestampSec, force);
     } finally {
@@ -168,6 +168,14 @@ export class BrowserMediaCaptureManager {
 
   private setupAudioRecording() {
     try {
+      // If Web Speech API is supported in this browser, Chrome transcribes speech natively with 0 server CPU.
+      // Skipping redundant 1.2s raw audio streaming preserves server responsiveness on cloud free tiers.
+      const SpeechRecognitionClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognitionClass) {
+        console.info('Native Web Speech STT available. Client handles speech recognition with zero server CPU overhead.');
+        return;
+      }
+
       // Gather audio tracks from tab and mic
       const audioTracks: MediaStreamTrack[] = [];
       if (this.mediaStream) {

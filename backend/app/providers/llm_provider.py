@@ -140,7 +140,7 @@ class LocalOllamaLLMProvider(LLMProvider):
                 "temperature": kwargs.get("temperature", 0.7)
             }
 
-            timeout = httpx.Timeout(connect=6.0, read=45.0, write=15.0, pool=6.0)
+            timeout = httpx.Timeout(connect=3.0, read=12.0, write=8.0, pool=3.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.post("https://text.pollinations.ai/", json=payload)
                 if resp.status_code == 200 and resp.text:
@@ -162,7 +162,7 @@ class LocalOllamaLLMProvider(LLMProvider):
                         break
             
             encoded = urllib.parse.quote(q_text[:350])
-            timeout = httpx.Timeout(connect=5.0, read=25.0, write=10.0, pool=5.0)
+            timeout = httpx.Timeout(connect=3.0, read=8.0, write=5.0, pool=3.0)
             async with httpx.AsyncClient(timeout=timeout) as client:
                 resp = await client.get(f"https://text.pollinations.ai/{encoded}")
                 if resp.status_code == 200 and resp.text:

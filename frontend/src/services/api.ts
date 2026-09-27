@@ -64,6 +64,14 @@ export const setBackendUrl = (url: string) => {
   }
 };
 
+export const getFrameImageUrl = (frameId: string): string => {
+  return `${getApiBase()}/frames/${frameId}/image`;
+};
+
+export const getFrameThumbnailUrl = (frameId: string): string => {
+  return `${getApiBase()}/frames/${frameId}/thumbnail`;
+};
+
 export const API_BASE = getApiBase();
 
 export const api = {
