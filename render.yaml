@@ -46,7 +46,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: transcript-agent-backend
-          property: host
+        value: https://transcript-agent-backend.onrender.com/api

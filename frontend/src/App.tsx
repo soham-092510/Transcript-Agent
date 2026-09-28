@@ -59,6 +59,7 @@ export function App() {
   const [interimMinuteText, setInterimMinuteText] = useState<string>('');
 
   const [isLoadingInitial, setIsLoadingInitial] = useState(true);
+  const [wakeStatusText, setWakeStatusText] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [customBackendInput, setCustomBackendInput] = useState('');
   const [showBackendConfig, setShowBackendConfig] = useState(false);
@@ -75,8 +76,27 @@ export function App() {
   const loadInitialData = async (retries = 6, delayMs = 1200) => {
     setIsLoadingInitial(true);
     setConnectionError(null);
+    setWakeStatusText(null);
 
-    const isCloud = typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com');
+    // Auto-heal any stale or corrupted localStorage URL
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem('LEARNLENS_BACKEND_URL');
+        if (
+          stored &&
+          (stored === 'transcript-agent-backend' ||
+            stored.includes('transcript-agent-backend/api') ||
+            (stored.includes('transcript-agent-backend') && !stored.includes('.onrender.com')))
+        ) {
+          window.localStorage.removeItem('LEARNLENS_BACKEND_URL');
+        }
+      } catch (_) {}
+    }
+
+    const isCloud =
+      typeof window !== 'undefined' &&
+      (window.location.hostname.includes('.onrender.com') ||
+        (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'));
     const effectiveRetries = isCloud ? 16 : retries;
     const effectiveDelay = isCloud ? 2500 : delayMs;
 
@@ -107,22 +127,32 @@ export function App() {
         }
         setIsLoadingInitial(false);
         setConnectionError(null);
+        setWakeStatusText(null);
         return;
       } catch (e: any) {
         console.warn(`Connection attempt ${attempt}/${effectiveRetries} failed:`, e);
+
+        // Auto-heal if target base has corrupt internal hostname
+        const currentTarget = getApiBase();
+        if (currentTarget.includes('transcript-agent-backend') && !currentTarget.includes('.onrender.com')) {
+          setBackendUrl('https://transcript-agent-backend.onrender.com');
+        }
+
         if (attempt < effectiveRetries) {
           if (isCloud && attempt >= 2) {
-            setConnectionError(`Waking up Render backend container (attempt ${attempt}/${effectiveRetries})... Render free-tier instances sleep when inactive and require ~40s to boot up.`);
+            setWakeStatusText(
+              `Waking up LearnLens AI Cloud Engine (${attempt}/${effectiveRetries})... Render instances sleep when inactive and take ~30s to boot.`
+            );
           }
           await new Promise(r => setTimeout(r, effectiveDelay));
         } else {
-          const currentTarget = getApiBase();
           setConnectionError(
             isCloud
-              ? `Could not reach cloud backend at ${currentTarget}. The Render service may still be deploying or spinning up.`
-              : `Could not connect to LearnLens AI backend at ${currentTarget}. Please ensure 'python run.py' or uvicorn is running.`
+              ? `Could not reach cloud backend at ${getApiBase()}. The Render service may still be deploying or spinning up.`
+              : `Could not connect to LearnLens AI backend at ${getApiBase()}. Please ensure 'python run.py' or uvicorn is running.`
           );
           setIsLoadingInitial(false);
+          setWakeStatusText(null);
         }
       }
     }
@@ -231,6 +261,11 @@ export function App() {
   const handleConfirmStart = async (title: string, platform: string) => {
     setStartModalOpen(false);
     try {
+      if (!navigator?.mediaDevices?.getDisplayMedia) {
+        alert("Screen capture is optimized for desktop browsers (Chrome, Edge, Brave, or Safari on macOS). On mobile devices and tablets, you can explore courses, view slide decks, take practice quizzes, and chat with the AI Teacher!");
+        return;
+      }
+
       // 1. Immediately trigger screen sharing while the browser transient activation is fresh
       const startObsPromise = startMediaObservation();
 
@@ -244,8 +279,14 @@ export function App() {
         setIsCapturing(true);
         setCurrentTab('live');
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error('Could not start learning session:', e);
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator?.userAgent || '');
+      if (isMobile) {
+        alert("Screen capture is designed for desktop browsers (Chrome, Edge, Brave, Safari Mac). On mobile devices, you can explore sessions, view slides, take quizzes, and chat with the AI Teacher!");
+      } else {
+        alert(e?.message || "Screen capture was cancelled or not permitted.");
+      }
     }
   };
 
@@ -254,10 +295,18 @@ export function App() {
       setStartModalOpen(true);
       return;
     }
-    const ok = await startMediaObservation();
-    if (ok) {
-      setIsCapturing(true);
-      setCurrentTab('live');
+    if (!navigator?.mediaDevices?.getDisplayMedia) {
+      alert("Screen capture requires a desktop browser (Chrome, Edge, Brave, or Safari on macOS). On mobile devices and tablets, you can explore existing courses, view slide decks, take practice quizzes, and chat with the AI Teacher!");
+      return;
+    }
+    try {
+      const ok = await startMediaObservation();
+      if (ok) {
+        setIsCapturing(true);
+        setCurrentTab('live');
+      }
+    } catch (e: any) {
+      console.error('Could not start media observation:', e);
     }
   };
 
@@ -662,13 +711,17 @@ export function App() {
                 <Loader2 className="w-3.5 h-3.5 text-sky-400 animate-spin" />
               </div>
             </div>
-            <h2 className="text-base font-bold text-slate-100 tracking-tight">Connecting to LearnLens AI Engine</h2>
+            <h2 className="text-base font-bold text-slate-100 tracking-tight">
+              {wakeStatusText || "Connecting to LearnLens AI Engine"}
+            </h2>
             <p className="text-xs text-slate-400 mt-1 max-w-sm">
-              Initializing local multimodal observation pipeline, SQLite knowledge base, and AI teacher studio...
+              {wakeStatusText 
+                ? "Connecting to Render cloud instance and loading course library..." 
+                : "Initializing multimodal observation pipeline, SQLite knowledge base, and AI teacher studio..."}
             </p>
             <div className="mt-5 flex items-center gap-2 text-[11px] text-slate-400 font-medium">
               <span className="w-2 h-2 rounded-full bg-sky-400 animate-ping" />
-              <span>Local-first • Zero cloud telemetry • 100% Private</span>
+              <span>{wakeStatusText ? "Cloud Deployed • Global Access" : "Local-first • Zero cloud telemetry • 100% Private"}</span>
             </div>
           </div>
         ) : connectionError ? (

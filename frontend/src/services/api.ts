@@ -11,7 +11,27 @@ import {
 } from '../types';
 
 const formatApiUrl = (raw: string): string => {
+  if (!raw || !raw.trim()) {
+    return 'https://transcript-agent-backend.onrender.com/api';
+  }
   let url = raw.trim();
+
+  // If internal Render service name was stored or passed without public domain
+  if (
+    url === 'transcript-agent-backend' ||
+    url === 'http://transcript-agent-backend' ||
+    url === 'https://transcript-agent-backend' ||
+    url === 'transcript-agent-backend/api' ||
+    url === 'http://transcript-agent-backend/api' ||
+    url === 'https://transcript-agent-backend/api'
+  ) {
+    return 'https://transcript-agent-backend.onrender.com/api';
+  }
+
+  if (url.includes('transcript-agent-backend') && !url.includes('.onrender.com')) {
+    url = url.replace('transcript-agent-backend', 'transcript-agent-backend.onrender.com');
+  }
+
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     url = `https://${url}`;
   }
@@ -23,31 +43,66 @@ const formatApiUrl = (raw: string): string => {
 };
 
 export const getApiBase = (): string => {
-  // 1. Check custom localStorage override
+  // 1. Check custom localStorage override (incognito-safe)
   if (typeof window !== 'undefined') {
-    const saved = window.localStorage.getItem('LEARNLENS_BACKEND_URL');
-    if (saved && saved.trim()) {
-      return formatApiUrl(saved.trim());
+    try {
+      const saved = window.localStorage.getItem('LEARNLENS_BACKEND_URL');
+      if (saved && saved.trim()) {
+        const trimmed = saved.trim();
+        // Clear any old corrupted internal hostname
+        if (
+          trimmed === 'transcript-agent-backend' ||
+          trimmed === 'https://transcript-agent-backend' ||
+          trimmed === 'https://transcript-agent-backend/api'
+        ) {
+          window.localStorage.removeItem('LEARNLENS_BACKEND_URL');
+        } else {
+          return formatApiUrl(trimmed);
+        }
+      }
+    } catch {
+      // Safe fallback for strict privacy / incognito mode
     }
   }
 
-  // 2. Direct static build-time environment variable (must be written verbatim for Vite)
+  // 2. Direct static build-time environment variable (check if valid and not internal Render host)
   const buildTimeUrl = import.meta.env.VITE_API_URL;
   if (buildTimeUrl && typeof buildTimeUrl === 'string' && buildTimeUrl.trim()) {
-    return formatApiUrl(buildTimeUrl.trim());
+    const trimmed = buildTimeUrl.trim();
+    if (
+      trimmed === 'transcript-agent-backend' ||
+      trimmed === 'http://transcript-agent-backend' ||
+      trimmed === 'https://transcript-agent-backend' ||
+      trimmed === 'transcript-agent-backend/api' ||
+      trimmed === 'https://transcript-agent-backend/api'
+    ) {
+      return 'https://transcript-agent-backend.onrender.com/api';
+    }
+    return formatApiUrl(trimmed);
   }
 
   // 3. Render cloud auto-detection: if hosted on *.onrender.com, route to matching -backend service
-  if (typeof window !== 'undefined' && window.location.hostname.includes('.onrender.com')) {
+  if (typeof window !== 'undefined' && window.location && window.location.hostname) {
     const host = window.location.hostname;
     // e.g. transcript-agent-frontend.onrender.com -> transcript-agent-backend.onrender.com
-    const backendHost = host.replace(/-frontend(\.[^.]+)?\.onrender\.com/, '-backend$1.onrender.com');
-    if (backendHost !== host) {
+    if (host.includes('.onrender.com')) {
+      const backendHost = host.replace(/-frontend(\.[^.]+)?\.onrender\.com/, '-backend$1.onrender.com');
       return `https://${backendHost}/api`;
     }
   }
 
-  // 4. Default for local development with Vite dev server proxy
+  // 4. Any external production host fallback (not localhost)
+  if (
+    typeof window !== 'undefined' &&
+    window.location &&
+    window.location.hostname &&
+    window.location.hostname !== 'localhost' &&
+    window.location.hostname !== '127.0.0.1'
+  ) {
+    return 'https://transcript-agent-backend.onrender.com/api';
+  }
+
+  // 5. Default for local development with Vite dev server proxy
   if (typeof window !== 'undefined') {
     return '/api';
   }
@@ -56,10 +111,14 @@ export const getApiBase = (): string => {
 
 export const setBackendUrl = (url: string) => {
   if (typeof window !== 'undefined') {
-    if (!url || !url.trim()) {
-      window.localStorage.removeItem('LEARNLENS_BACKEND_URL');
-    } else {
-      window.localStorage.setItem('LEARNLENS_BACKEND_URL', url.trim());
+    try {
+      if (!url || !url.trim()) {
+        window.localStorage.removeItem('LEARNLENS_BACKEND_URL');
+      } else {
+        window.localStorage.setItem('LEARNLENS_BACKEND_URL', url.trim());
+      }
+    } catch {
+      // Safe fallback for strict privacy / incognito mode
     }
   }
 };
