@@ -54,3 +54,6 @@ data/sessions/demo_cybersecurity_module_2/screenshots/frame_*.jpg
 # Database
 data/learnlens.db-journal
 data/learnlens.db-wal
+
+# Scratch files
+scratch/
