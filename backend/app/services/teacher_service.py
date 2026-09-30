@@ -109,7 +109,8 @@ class AITeacherService:
             system_prompt=SYSTEM_PROMPT_TEMPLATE,
             chat_history=chat_history,
             force_ollama=True,
-            timeout=60.0
+            timeout=60.0,
+            temperature=0.6
         )
 
         # 4. Save and return ChatMessage

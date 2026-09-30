@@ -25,6 +25,7 @@ class Settings:
     DEFAULT_VLM_MODEL: str = os.getenv("DEFAULT_VLM_MODEL", "qwen2.5-vl:latest")
     WHISPER_MODEL: str = os.getenv("WHISPER_MODEL", "tiny.en")
     WHISPER_LANGUAGE: str = os.getenv("WHISPER_LANGUAGE", "en")
+    DEFAULT_LLM_TEMPERATURE: float = float(os.getenv("DEFAULT_LLM_TEMPERATURE", "0.6"))
     
     # Latency & Concurrency Safeguards
     # Fast mode delivers instant (<1ms) grounded synthesis during meetings so Ollama never pegs CPU or lags

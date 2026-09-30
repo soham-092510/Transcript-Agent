@@ -100,7 +100,7 @@ class LocalOllamaLLMProvider(LLMProvider):
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": kwargs.get("temperature", 0.7)
+                        "temperature": kwargs.get("temperature", settings.DEFAULT_LLM_TEMPERATURE)
                     }
                 }
                 if system_prompt:
@@ -168,7 +168,7 @@ class LocalOllamaLLMProvider(LLMProvider):
             payload = {
                 "messages": messages,
                 "model": "openai",
-                "temperature": kwargs.get("temperature", 0.7)
+                "temperature": kwargs.get("temperature", settings.DEFAULT_LLM_TEMPERATURE)
             }
 
             timeout = httpx.Timeout(connect=5.0, read=28.0, write=10.0, pool=5.0)
@@ -202,7 +202,7 @@ class LocalOllamaLLMProvider(LLMProvider):
             payload2 = {
                 "messages": focused_messages,
                 "model": "openai",
-                "temperature": 0.7
+                "temperature": kwargs.get("temperature", settings.DEFAULT_LLM_TEMPERATURE)
             }
             timeout2 = httpx.Timeout(connect=4.0, read=18.0, write=8.0, pool=4.0)
             async with httpx.AsyncClient(headers=browser_headers, timeout=timeout2) as client:
